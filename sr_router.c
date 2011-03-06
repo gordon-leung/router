@@ -64,13 +64,27 @@ void sr_handlepacket(struct sr_instance* sr,
     assert(sr);
     assert(packet);
     assert(interface);
-		
+
+    printf("*** -> Received packet of length %d\n",len);
+
+//		testmethod(sr, packet, len, interface);
+}
+/* end sr_ForwardPacket */
+
+
+/*--------------------------------------------------------------------- 
+ * Method: testmethod for debug and learning purposes
+ *
+ *---------------------------------------------------------------------*/
+void testmethod(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface){
+				
 		struct sr_ethernet_hdr* e_hdr = 0;
     struct sr_arphdr*       a_hdr = 0;
 		a_hdr = (struct sr_arphdr*)(packet + sizeof(struct sr_ethernet_hdr));
 		struct sr_if* iface = sr_get_interface(sr, interface);
 
-    printf("*** -> Received packet of length %d from interface %u \n",len, iface->ip);
+		printf("*** -> Received packet of length %d from interface %u \n",len, iface->ip);
+
 		e_hdr = (struct sr_ethernet_hdr*)packet;
 		printf("%d\n",ntohs(e_hdr->ether_type));
 		printf("%d\n",(ETHERTYPE_ARP));
@@ -93,10 +107,4 @@ void sr_handlepacket(struct sr_instance* sr,
 			printf(" ");
 		}
 		printf("\n");
-}/* end sr_ForwardPacket */
-
-
-/*--------------------------------------------------------------------- 
- * Method:
- *
- *---------------------------------------------------------------------*/
+}
