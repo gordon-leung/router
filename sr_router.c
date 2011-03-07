@@ -71,21 +71,42 @@ void sr_handlepacket(struct sr_instance* sr,
 		struct sr_ethernet_hdr* e_hdr = 0;//init
 		e_hdr = (struct sr_ethernet_hdr*)packet;//cast ethernet header
 
-		//TODO: make e_hdr->ether_type into case statement?
-		//ARP PACKET!
-		if((e_hdr->ether_type) == htons(ETHERTYPE_ARP)){
-			printf("Got an ARP packet!\n");
-			if(arp_reply(sr, packet, len, interface) == 0){
-				printf("ARP REPLY sent!\n");
+		switch(ntohs(e_hdr->ether_type))
+		{
+			case (ETHERTYPE_ARP): //ARP PACKET!
+			{
+				printf("Got ARP REQUEST!\n");
+				if(arp_reply(sr, packet, len, interface) == 0){
+					printf("Sent ARP REPLY!\n");
+				}
+				break;
 			}
+
+			case (ETHERTYPE_IP): //IP PACKET!
+			{
+				printf("Got IP packet!\n");
+				break;
+			}
+
+			case (IPPROTO_ICMP): //ICMP PACKET!
+			{
+				printf("Got ICMP packet!\n");
+				break;
+			}
+		
+			default:
+				printf("Unknown packet !\n");
 		}
 
 		//testmethod(sr, packet, len, interface);
 }
 /* end sr_ForwardPacket */
+
 /*--------------------------------------------------------------------- 
- * Method: arp_reply
+ * Method: arp_reply(...)
  * Return: 0 on success
+ *
+ * Replies to an ARP Request
  *---------------------------------------------------------------------*/
 int arp_reply(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface){
 		
@@ -140,12 +161,13 @@ void testmethod(struct sr_instance* sr, uint8_t * packet, unsigned int len, char
 		char dotted_ip[INET_ADDRSTRLEN]; //should contain dotted-decimal format of interface ip
 		inet_ntop(AF_INET, &(sa.sin_addr), dotted_ip, INET_ADDRSTRLEN);
 		printf("*** -> Received packet of length %d on interface %s with ip %s\n",len, interface, dotted_ip);
-
+		printf("Interface MAC address: ");
 		for(int i=0; i<6; i++){//mac address of interface
 			printf("%x ",iface->addr[i]);
 		}
-
+		printf("\n");
 		e_hdr = (struct sr_ethernet_hdr*)packet;//cast ethernet header
+		printf("ethernet type: %x\n",(int)ntohs(e_hdr->ether_type)); //ethernet type
 		printf("Destination mac address: ");
 		for(int i=0; i<ETHER_ADDR_LEN; i++){//destination mac address
 			printf("%x",e_hdr->ether_dhost[i]);
