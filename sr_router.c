@@ -69,6 +69,7 @@ void sr_handlepacket(struct sr_instance* sr,
 
 		//FIGURE OUT WHAT TO DO WITH INCOMING PACKET
 		struct sr_ethernet_hdr* e_hdr = 0;//init
+		struct ip*							ip_hdr= 0;//init
 		e_hdr = (struct sr_ethernet_hdr*)packet;//cast ethernet header
 
 		switch(ntohs(e_hdr->ether_type))
@@ -85,17 +86,22 @@ void sr_handlepacket(struct sr_instance* sr,
 			case (ETHERTYPE_IP): //IP PACKET!
 			{
 				printf("Got IP packet!\n");
+				ip_hdr = (struct ip*)(packet + sizeof(struct sr_ethernet_hdr));//cast ip header
+				
+				switch(ip_hdr->ip_p)
+				{
+					case (IPPROTO_ICMP):
+					{
+						printf("IP packet is of type ICMP!\n");
+						break;
+					}
+					default:
+						printf("Unknown IP packet!\n");
+				}
 				break;
 			}
-
-			case (IPPROTO_ICMP): //ICMP PACKET!
-			{
-				printf("Got ICMP packet!\n");
-				break;
-			}
-		
 			default:
-				printf("Unknown packet !\n");
+				printf("Unknown packet!\n");
 		}
 
 		//testmethod(sr, packet, len, interface);
@@ -152,8 +158,9 @@ int arp_reply(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* 
  *---------------------------------------------------------------------*/
 void testmethod(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface){
 		
-		struct sr_ethernet_hdr* e_hdr = 0;//init
-    struct sr_arphdr*       a_hdr = 0;//init
+		struct sr_ethernet_hdr* e_hdr = 0;	//init
+    struct sr_arphdr*       a_hdr = 0;	//init
+		struct ip*							ip_hdr = 0; //init
 
 		struct sr_if* iface = sr_get_interface(sr, interface); //packet is from which interface?
 		struct sockaddr_in sa;
@@ -193,5 +200,10 @@ void testmethod(struct sr_instance* sr, uint8_t * packet, unsigned int len, char
 			sa.sin_addr.s_addr = a_hdr->ar_sip;
 			inet_ntop(AF_INET, &(sa.sin_addr), dotted_ip, INET_ADDRSTRLEN);
 			printf("Sender IP: %d %s\n",a_hdr->ar_sip, dotted_ip);
+		}
+		else if ((e_hdr->ether_type) == htons(ETHERTYPE_IP)){
+			printf("Examining IP packet\n");
+			ip_hdr = (struct ip*)(packet + sizeof(struct sr_ethernet_hdr));
+			printf("IP protocol: %x\n",ip_hdr->ip_p);
 		}
 }
