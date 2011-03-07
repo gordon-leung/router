@@ -589,7 +589,7 @@ int sr_send_packet(struct sr_instance* sr /* borrowed */,
         free ( sr_pkt );
         return -1;
     }
-
+		printf("Length of packet sent: %d\n", total_len);
     if( write(sr->sockfd, sr_pkt, total_len) < total_len )
     {
         fprintf(stderr, "Error writing packet\n");
