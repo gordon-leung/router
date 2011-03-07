@@ -107,7 +107,7 @@ int arp_reply(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* 
 		//ARP HEADER CHANGES
 		a_hdr = (struct sr_arphdr*)(packet + sizeof(struct sr_ethernet_hdr)); //cast arp header
 		//opcode = 2 for ARP REPLY
-		a_hdr->ar_op = htons(3);
+		a_hdr->ar_op = htons(2);
 		//target hardware addr = source hardware addr
 		//at same time change sender hardware addr = eth0 mac addr
 		for(int i=0; i<<ETHER_ADDR_LEN; i++){
