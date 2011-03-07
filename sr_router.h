@@ -13,6 +13,8 @@
 #include <sys/time.h>
 #include <stdio.h>
 
+#include "sr_if.h"
+#include "sr_rt.h"
 #include "sr_protocol.h"
 
 /* we dont like this debug , but what to do for varargs ? */
@@ -65,8 +67,8 @@ int sr_read_from_server(struct sr_instance* );
 /* -- sr_router.c -- */
 void sr_init(struct sr_instance* );
 void sr_handlepacket(struct sr_instance* , uint8_t * , unsigned int , char* );
-void testmethod(struct sr_instance* , uint8_t * , unsigned int , char* );
-int arp_reply(struct sr_instance* , uint8_t * , unsigned int , char* );
+
+void ethernet_swap_src_dest(struct sr_instance* sr, uint8_t * packet, char* interface);
 
 /* -- sr_if.c -- */
 void sr_add_interface(struct sr_instance* , const char* );

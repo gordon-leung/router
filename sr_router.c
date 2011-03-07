@@ -14,11 +14,10 @@
 #include <stdio.h>
 #include <assert.h>
 
-
-#include "sr_if.h"
-#include "sr_rt.h"
 #include "sr_router.h"
-#include "sr_protocol.h"
+#include "arp.h"
+#include "icmp.h"
+#include "test.h"
 
 /*--------------------------------------------------------------------- 
  * Method: sr_init(void)
@@ -71,11 +70,12 @@ void sr_handlepacket(struct sr_instance* sr,
 		struct sr_ethernet_hdr* e_hdr = 0;//init
 		struct ip*							ip_hdr= 0;//init
 		e_hdr = (struct sr_ethernet_hdr*)packet;//cast ethernet header
-
+		//TODO: Should figure out if packet is for us or not first.
 		switch(ntohs(e_hdr->ether_type))
 		{
 			case (ETHERTYPE_ARP): //ARP PACKET!
 			{
+				//TODO: Could actually be ARP request or ARP reply.
 				printf("Got ARP REQUEST!\n");
 				if(arp_reply(sr, packet, len, interface) == 0){
 					printf("Sent ARP REPLY!\n");
@@ -93,6 +93,7 @@ void sr_handlepacket(struct sr_instance* sr,
 					case (IPPROTO_ICMP):
 					{
 						printf("IP packet is of type ICMP!\n");
+						//if(icmp_reply(sr, packet, len, interface) == 0){ printf("Sent ICMP REPLY!\n"); }
 						break;
 					}
 					default:
@@ -104,106 +105,22 @@ void sr_handlepacket(struct sr_instance* sr,
 				printf("Unknown packet!\n");
 		}
 
-		//testmethod(sr, packet, len, interface);
+//		testmethod(sr, packet, len, interface); //for debug, learning purposes
 }
-/* end sr_ForwardPacket */
 
 /*--------------------------------------------------------------------- 
- * Method: arp_reply(...)
- * Return: 0 on success
+ * Method: ethernet_swap_src_dest(...)
  *
- * Replies to an ARP Request
+ * Puts the source mac addr into the destination mac addr
+ * And puts the interface mac addr into the source mac addr
  *---------------------------------------------------------------------*/
-int arp_reply(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface){
-		
+void ethernet_swap_src_dest(struct sr_instance* sr, uint8_t * packet, char* interface){
 		struct sr_ethernet_hdr* e_hdr = 0;//init
-    struct sr_arphdr*       a_hdr = 0;//init
 		struct sr_if* iface = sr_get_interface(sr, interface); //packet is from which interface?
-
-//BEGIN ARP REPLY MODIFICATION
-
-		//ETHERNET HEADER CHANGES
 		e_hdr = (struct sr_ethernet_hdr*)packet;//cast ethernet header
-		//put source mac addr in destination mac addr
-		//at same time replace source mac addr with eth0 mac addr
+		
 		for(int i=0; i<ETHER_ADDR_LEN; i++){
 			e_hdr->ether_dhost[i] = e_hdr->ether_shost[i];
 			e_hdr->ether_shost[i] = iface->addr[i];
-		}
-		
-		//ARP HEADER CHANGES
-		a_hdr = (struct sr_arphdr*)(packet + sizeof(struct sr_ethernet_hdr)); //cast arp header
-		//opcode = 2 for ARP REPLY
-		a_hdr->ar_op = htons(2);
-		//target hardware addr = source hardware addr
-		//at same time change sender hardware addr = eth0 mac addr
-		for(int i=0; i<ETHER_ADDR_LEN; i++){
-			a_hdr->ar_tha[i] = a_hdr->ar_sha[i];
-			a_hdr->ar_sha[i] = iface->addr[i];
-		}
-		//target ip = sending ip
-		a_hdr->ar_tip = a_hdr->ar_sip;
-		//sending ip addr = eth0 ip addr
-		a_hdr->ar_sip = iface->ip;
-
-//END ARP REPLY MODIFICATION
-
-		//send it out
-		return sr_send_packet(sr, packet, len, interface);
-}
-
-/*--------------------------------------------------------------------- 
- * Method: testmethod for debug and learning purposes
- *
- *---------------------------------------------------------------------*/
-void testmethod(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface){
-		
-		struct sr_ethernet_hdr* e_hdr = 0;	//init
-    struct sr_arphdr*       a_hdr = 0;	//init
-		struct ip*							ip_hdr = 0; //init
-
-		struct sr_if* iface = sr_get_interface(sr, interface); //packet is from which interface?
-		struct sockaddr_in sa;
-		sa.sin_addr.s_addr = iface->ip;//assign binary value to s_addr
-		char dotted_ip[INET_ADDRSTRLEN]; //should contain dotted-decimal format of interface ip
-		inet_ntop(AF_INET, &(sa.sin_addr), dotted_ip, INET_ADDRSTRLEN);
-		printf("*** -> Received packet of length %d on interface %s with ip %s\n",len, interface, dotted_ip);
-		printf("Interface MAC address: ");
-		for(int i=0; i<6; i++){//mac address of interface
-			printf("%x ",iface->addr[i]);
-		}
-		printf("\n");
-		e_hdr = (struct sr_ethernet_hdr*)packet;//cast ethernet header
-		printf("ethernet type: %x\n",(int)ntohs(e_hdr->ether_type)); //ethernet type
-		printf("Destination mac address: ");
-		for(int i=0; i<ETHER_ADDR_LEN; i++){//destination mac address
-			printf("%x",e_hdr->ether_dhost[i]);
-			printf(" ");
-		}
-		printf("\n");
-		printf("Source mac address: ");
-		for(int i=0; i<ETHER_ADDR_LEN; i++){//source mac address
-			printf("%x",e_hdr->ether_shost[i]);
-			printf(" ");
-		}
-		printf("\n");
-
-		if((e_hdr->ether_type) == htons(ETHERTYPE_ARP)){
-			//it's an arp packet!
-			a_hdr = (struct sr_arphdr*)(packet + sizeof(struct sr_ethernet_hdr)); //cast arpheader
-			printf("ARP sender address: ");
-			for(int i=0; i<6; i++){//hardware type
-				printf("%x",a_hdr->ar_sha[i]);
-				printf(" ");
-			}
-			printf("\n");
-			sa.sin_addr.s_addr = a_hdr->ar_sip;
-			inet_ntop(AF_INET, &(sa.sin_addr), dotted_ip, INET_ADDRSTRLEN);
-			printf("Sender IP: %d %s\n",a_hdr->ar_sip, dotted_ip);
-		}
-		else if ((e_hdr->ether_type) == htons(ETHERTYPE_IP)){
-			printf("Examining IP packet\n");
-			ip_hdr = (struct ip*)(packet + sizeof(struct sr_ethernet_hdr));
-			printf("IP protocol: %x\n",ip_hdr->ip_p);
 		}
 }

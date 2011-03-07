@@ -124,7 +124,12 @@ struct sr_ethernet_hdr
 #ifndef IPPROTO_ICMP
 #define IPPROTO_ICMP            0x0001  /* ICMP protocol */
 #endif
-
+struct icmphdr
+{
+		uint8_t icmp_type;		//type
+		uint8_t icmp_code;		//code
+		uint16_t icmp_checksum;		//icmp header checksum
+} __attribute__ ((packed)) ;
 #ifndef ETHERTYPE_IP
 #define ETHERTYPE_IP            0x0800  /* IP protocol */
 #endif
