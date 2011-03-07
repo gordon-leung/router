@@ -110,7 +110,7 @@ int arp_reply(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* 
 		a_hdr->ar_op = htons(2);
 		//target hardware addr = source hardware addr
 		//at same time change sender hardware addr = eth0 mac addr
-		for(int i=0; i<<ETHER_ADDR_LEN; i++){
+		for(int i=0; i<ETHER_ADDR_LEN; i++){
 			a_hdr->ar_tha[i] = a_hdr->ar_sha[i];
 			a_hdr->ar_sha[i] = iface->addr[i];
 		}
