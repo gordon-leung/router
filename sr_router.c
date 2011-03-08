@@ -19,6 +19,11 @@
 #include "icmp.h"
 #include "test.h"
 
+#include "sr_if.h"
+#include "sr_rt.h"
+#include "sr_protocol.h"
+#include "Ethernet.h"
+
 /*--------------------------------------------------------------------- 
  * Method: sr_init(void)
  * Scope:  Global
@@ -65,6 +70,8 @@ void sr_handlepacket(struct sr_instance* sr,
     assert(interface);
 
     printf("*** -> Received packet of length %d\n",len);
+
+    handleEthPacket(sr, packet, len, interface);
 
 		//FIGURE OUT WHAT TO DO WITH INCOMING PACKET
 		struct sr_ethernet_hdr* e_hdr = 0;//init

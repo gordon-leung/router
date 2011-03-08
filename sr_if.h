@@ -9,6 +9,8 @@
  *
  *---------------------------------------------------------------------------*/
 
+#include <stdint.h>
+
 #ifndef sr_INTERFACE_H
 #define sr_INTERFACE_H
 

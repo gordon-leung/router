@@ -2,7 +2,7 @@
  * This header file defines data structures for logging packets in tcpdump
  * format as well as a set of operations for logging.
  */
-
+#include <stdint.h>
 
 #ifdef _LINUX_
 #include <stdint.h>
