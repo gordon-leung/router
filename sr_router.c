@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <stddef.h>
 
 #include "sr_router.h"
 #include "arp.h"
@@ -37,7 +38,11 @@ void sr_init(struct sr_instance* sr)
     /* REQUIRES */
     assert(sr);
 
-    /* Add initialization code here! */
+    struct sr_if* iface = sr->if_list;
+    while(iface){
+    	iface->ip_eth_arp_tbl = NULL;
+    	iface = iface->next;
+    }
 
 } /* -- sr_init -- */
 
@@ -84,9 +89,9 @@ void sr_handlepacket(struct sr_instance* sr,
 			{
 				//TODO: Could actually be ARP request or ARP reply.
 				printf("Got ARP REQUEST!\n");
-				if(arp_reply(sr, packet, len, interface) == 0){
-					printf("Sent ARP REPLY!\n");
-				}
+				//if(arp_reply(sr, packet, len, interface) == 0){
+					//printf("Sent ARP REPLY!\n");
+				//}
 				break;
 			}
 

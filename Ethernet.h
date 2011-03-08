@@ -29,3 +29,9 @@ int isBroadCastMAC(const uint8_t* macAddr);
  * @return: 1 if they are the same, return 0 otherwise.
  */
 int MACcmp(const uint8_t* macAddr1, const uint8_t* macAddr2);
+
+/*Copy a mac address form src to dest*/
+void MACcpy(uint8_t* dest, uint8_t* src);
+
+/*Send an arp response*/
+void send_arp_response(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * ethPacket, struct sr_if* iface);

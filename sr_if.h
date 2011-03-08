@@ -43,6 +43,7 @@ struct sr_if
     unsigned char addr[6];
     uint32_t ip;
     uint32_t speed;
+    struct ip_eth_arp_tbl_entry* ip_eth_arp_tbl;
     struct sr_if* next;
 };
 

@@ -9,4 +9,3 @@
 #define ERROR 0
 #define TRUE 1
 #define FALSE 0
-#define PTR_INIT_VAL 0
