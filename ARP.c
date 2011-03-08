@@ -21,7 +21,7 @@ int handleArpPacket(struct sr_arphdr* arphdr, struct sr_if* iface){
 
 	assert(arphdr);
 
-	printArpPacketHdr(arphdr);
+	//printArpPacketHdr(arphdr);
 
 	switch(ntohs(arphdr->ar_op)){
 

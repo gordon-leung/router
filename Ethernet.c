@@ -41,7 +41,7 @@ void handleEthPacket(struct sr_instance* sr,
 	unsigned short ether_type = ntohs(eth_hdr->ether_type);
 
 	//printEthMac(sr);
-	printPacketHeader(eth_hdr);
+	//printPacketHeader(eth_hdr);
 
 	switch(ether_type){
 		case (ETHERTYPE_ARP): //ARP PACKET!
