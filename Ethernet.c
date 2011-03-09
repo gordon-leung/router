@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #include "Ethernet.h"
 #include "sr_protocol.h"
@@ -37,6 +38,7 @@ void handleEthPacket(struct sr_instance* sr,
 	struct sr_if* iface = sr_get_interface(sr, interface); //the interface where the frame is received
 
 	unsigned short ether_type = ntohs(eth_hdr->ether_type);
+	uint16_t checksum = -1;
 
 	//printEthMac(sr);
 	//printPacketHeader(eth_hdr);
@@ -57,8 +59,17 @@ void handleEthPacket(struct sr_instance* sr,
 			printf("Got IP packet!\n");
 
 			if(isFrameForMe(sr, eth_hdr, iface)){
-				//TODO: handle the pass the ip datagram to ip layer for handling
+				//TODO: handle ip datagram
 				ip_hdr = (struct ip*)(ethPacket + sizeof(struct sr_ethernet_hdr));//cast ip header
+
+				//compute checksum
+				checksum = ip_hdr->ip_sum;
+				printf("checksum original %x\n", checksum);
+				ip_hdr->ip_sum = 0; //checksum cleared
+				checksum = csum((uint16_t*)ip_hdr, 20);
+				printf("checksum recomputed %x\n", checksum);
+				//
+				
 				switch(ip_hdr->ip_p)
 				{
 					case (IPPROTO_ICMP):
@@ -75,6 +86,7 @@ void handleEthPacket(struct sr_instance* sr,
 				}
 			}
 			else{
+				//TODO: forward ip datagram
 				printf("eth frame not for me\n");
 			}
 			break;

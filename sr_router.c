@@ -77,7 +77,7 @@ void sr_handlepacket(struct sr_instance* sr,
     handleEthPacket(sr, packet, len, interface);
 
 
-		testmethod(sr, packet, len, interface); //for debug, learning purposes
+//		testmethod(sr, packet, len, interface); //for debug, learning purposes
 }
 
 /*--------------------------------------------------------------------- 

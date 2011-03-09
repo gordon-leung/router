@@ -18,6 +18,7 @@
 #include "sr_protocol.h"
 
 #include "Defs.h"
+#include "check.h"
 
 /* we dont like this debug , but what to do for varargs ? */
 #ifdef _DEBUG_
