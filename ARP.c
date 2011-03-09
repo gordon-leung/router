@@ -114,6 +114,10 @@ void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* 
 		setupArpResponse(arphdr, iface);
 		sendEthFrame_arp(sr, arphdr->ar_tha, ethPacket, iface, sizeof(struct sr_arphdr));
 	}
+	else if(ntohs(arphdr->ar_op) == ARP_REPLY){
+		//the gift arrived!!!
+		sendBufferedIPDatagrams(sr,  arphdr->ar_sip, arphdr->ar_sha, iface);
+	}
 
 }
 int resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface, uint8_t* mac_buff){
