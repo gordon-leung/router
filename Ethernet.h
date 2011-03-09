@@ -33,15 +33,27 @@ int MACcmp(const uint8_t* macAddr1, const uint8_t* macAddr2);
 /*Copy a mac address form src to dest*/
 void MACcpy(uint8_t* dest, uint8_t* src);
 
-/*Send an arp response
+/*Set a broadcast mac address to the mac addr buffer passed in.*/
+void setBroadCastMAC(uint8_t* mac_buff);
+
+/*Send an eth frame encapsulating a arp message
  * @param sr the simple router instance
  * @param dest_mac address of the interface where this
- * 		arp response is to go
- * @param ethPacket the eth frame encapsulating the arp
- * 		response
+ * 		arp message is to go
+ * @param eth_frame the eth frame encapsulating the arp
+ * 		message
  * @param iface the interface on the router where the arp
- * 		response is to be sent
- * @param len the size in bytes of the arp packet (not including
- * 		the size of the eth frame header)
+ * 		message is to be sent
+ * @param payload_len the size in bytes of the arp message
+ * 		(not including the size of the eth frame header)
  * */
-void send_arp_response(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * ethPacket, struct sr_if* iface, unsigned int len);
+void sendEthFrame_arp(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * eth_frame, struct sr_if* iface, unsigned int payload_len);
+
+/*Send an eth frame encapsulating an arp request
+ * @param sr the router instance
+ * @param arp_request the arp request to be sent
+ * @param iface the interface on this router where the eth frame
+ * 		is sent from
+ * @param payload_len the size of the arp request
+ */
+void sendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if* iface, unsigned int payload_len);

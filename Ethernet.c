@@ -22,6 +22,8 @@
 
 static int isFrameForMe(struct sr_instance* sr, struct sr_ethernet_hdr* eth_hdr, struct sr_if* iface);
 
+static void sendEthFrame(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * eth_frame, struct sr_if* iface, unsigned int payload_len);
+
 void handleEthPacket(struct sr_instance* sr,
         uint8_t * ethPacket,
         unsigned int len,
@@ -33,7 +35,7 @@ void handleEthPacket(struct sr_instance* sr,
 
 	//FIGURE OUT WHAT TO DO WITH INCOMING ETH PACKET
 	struct sr_ethernet_hdr* eth_hdr = NULL;
-	struct ip*							ip_hdr = NULL;
+	struct ip* ip_hdr = NULL;
 	eth_hdr = (struct sr_ethernet_hdr*)ethPacket;//cast ethernet header
 	struct sr_if* iface = sr_get_interface(sr, interface); //the interface where the frame is received
 
@@ -46,7 +48,6 @@ void handleEthPacket(struct sr_instance* sr,
 	switch(ether_type){
 		case (ETHERTYPE_ARP): //ARP PACKET!
 		{
-			//TODO: Could actually be ARP request or ARP reply.
 			//if it is a eth arp packet we send it to arp component to see if any useful info
 			//can be extracted regarded if the eth frame is meant for us.
 			printf("Got ARP PACKET!\n");
@@ -60,6 +61,7 @@ void handleEthPacket(struct sr_instance* sr,
 
 			if(isFrameForMe(sr, eth_hdr, iface)){
 				//TODO: handle ip datagram
+				//FIXME: can we put any ip related stuff into a class called IP.c?
 				ip_hdr = (struct ip*)(ethPacket + sizeof(struct sr_ethernet_hdr));//cast ip header
 
 				//compute checksum
@@ -86,9 +88,11 @@ void handleEthPacket(struct sr_instance* sr,
 				}
 			}
 			else{
-				//TODO: forward ip datagram
+				//Just drop the eth frame because it is not even
+				//targetted for me.
 				printf("eth frame not for me\n");
 			}
+
 			break;
 		}
 		default:
@@ -100,19 +104,26 @@ void handleEthPacket(struct sr_instance* sr,
 
 }
 
-void send_arp_response(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * ethPacket, struct sr_if* iface, unsigned int len){
-	struct sr_ethernet_hdr* eth_hdr = (struct sr_ethernet_hdr*)ethPacket;
+void sendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if* iface, unsigned int payload_len){
+
+}
+
+void sendEthFrame_arp(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * eth_frame, struct sr_if* iface, unsigned int payload_len){
+	struct sr_ethernet_hdr* eth_hdr = (struct sr_ethernet_hdr*)eth_frame;
+	eth_hdr->ether_type = htons(ETHERTYPE_ARP);
+	sendEthFrame(sr, dest_mac, eth_frame, iface, payload_len);
+}
+
+static void sendEthFrame(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * eth_frame, struct sr_if* iface, unsigned int payload_len){
+
+	struct sr_ethernet_hdr* eth_hdr = (struct sr_ethernet_hdr*)eth_frame;
+
 	MACcpy(eth_hdr->ether_dhost, dest_mac);
 	MACcpy(eth_hdr->ether_shost, iface->addr);
-	eth_hdr->ether_type = htons(ETHERTYPE_ARP);
 
-	len += sizeof(struct sr_ethernet_hdr);
-	sr_send_packet( sr, ethPacket, len, iface->name);
+	unsigned int frame_len = sizeof(struct sr_ethernet_hdr) + payload_len;
 
-	//not freeing the memory allocated to ethPacket here since
-	//it is buffer allocated to store the eth packet comming from
-	//the vns server and sr_vns_comm.c will deallocated once all
-	//the method calls return
+	sr_send_packet( sr, eth_frame, frame_len, iface->name);
 }
 
 int MACcmp(const uint8_t* macAddr1, const uint8_t* macAddr2){
@@ -127,6 +138,12 @@ int MACcmp(const uint8_t* macAddr1, const uint8_t* macAddr2){
 void MACcpy(uint8_t* dest, uint8_t* src){
 	for(int i=0; i<ETHER_ADDR_LEN; i++){
 		dest[i] = src[i];
+	}
+}
+
+void setBroadCastMAC(uint8_t* mac_buff){
+	for(int i=0; i<ETHER_ADDR_LEN; i++){
+		mac_buff[i] = BROAD_CAST_MAC;
 	}
 }
 

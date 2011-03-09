@@ -52,6 +52,15 @@ static int isArpEntryExpired(struct ip_eth_arp_tbl_entry* arp_entry);
  */
 static void deleteArpEntry(struct ip_eth_arp_tbl_entry* arp_entry, struct sr_if* iface);
 
+/*Populate the fields of the arphdr struct for the arp request
+ * @param arphdr the buffer for the arp hdr for the arp request
+ * @param ip the target interface ip addr
+ * @param iface the interface on the router where the
+ * 		arp request is sent from.
+ */
+static void setupArpRequest(struct sr_arphdr* arphdr, const uint32_t ip, struct sr_if* iface);
+
+
 void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* iface){
 
 	struct sr_arphdr* arphdr = (struct sr_arphdr*)(ethPacket + sizeof(struct sr_ethernet_hdr));
@@ -103,7 +112,7 @@ void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* 
 
 	if(ntohs(arphdr->ar_op) == ARP_REQUEST){
 		setupArpResponse(arphdr, iface);
-		send_arp_response(sr, arphdr->ar_tha, ethPacket, iface, sizeof(struct sr_arphdr));
+		sendEthFrame_arp(sr, arphdr->ar_tha, ethPacket, iface, sizeof(struct sr_arphdr));
 	}
 
 }
@@ -128,6 +137,14 @@ uint8_t* resolve(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface)
 	}
 
 	if((!arp_entry) || arpEntryExpired){
+		//need to resolve by sending an arp request. do it!
+		struct sr_arphdr* arp_request = (struct sr_arphdr*) malloc(sizeof(struct sr_arphdr));
+		assert(arp_request);
+		setupArpRequest(arp_request, ip, iface);
+		sendArpRequest(sr, (uint8_t*) arp_request, iface, sizeof(struct sr_arphdr));
+		if(arp_request){
+			free(arp_request);
+		}
 		return NULL;
 	}
 	else{
@@ -135,7 +152,25 @@ uint8_t* resolve(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface)
 	}
 }
 
-static void sendArpRequest(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface){
+static void setupArpRequest(struct sr_arphdr* arphdr, const uint32_t ip, struct sr_if* iface){
+
+	arphdr->ar_hln = ETHER_ADDR_LEN;
+
+	arphdr->ar_hrd = htons(ARPHDR_ETHER);
+
+	arphdr->ar_op = htons(ARP_REQUEST);
+
+	arphdr->ar_pln = IP_ADDR_LEN;
+
+	arphdr->ar_pro = htons(ETHERTYPE_IP);
+
+	MACcpy(arphdr->ar_sha, iface->addr);
+
+	arphdr->ar_sip = iface->ip;
+
+	setBroadCastMAC(arphdr->ar_tha);
+
+	arphdr->ar_tip = ip;
 
 }
 
