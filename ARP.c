@@ -41,6 +41,17 @@ static void addArpEntry(struct sr_if* iface, const uint32_t ip, uint8_t* mac);
  */
 static void setupArpResponse(struct sr_arphdr* arphdr, struct sr_if* iface);
 
+/*Checks to see if the arp entry has expired.
+ * @return 1 if the arp entry is expired, o otherwise
+ */
+static int isArpEntryExpired(struct ip_eth_arp_tbl_entry* arp_entry);
+
+/*Deleting an entry from the arp table.
+ * @param arp_entry the entry to be deleted
+ * @parm iface the interface where the arp table resides.
+ */
+static void deleteArpEntry(struct ip_eth_arp_tbl_entry* arp_entry, struct sr_if* iface);
+
 void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* iface){
 
 	struct sr_arphdr* arphdr = (struct sr_arphdr*)(ethPacket + sizeof(struct sr_ethernet_hdr));
@@ -92,9 +103,68 @@ void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* 
 
 	if(ntohs(arphdr->ar_op) == ARP_REQUEST){
 		setupArpResponse(arphdr, iface);
-		send_arp_response(sr, arphdr->ar_tha, ethPacket, iface);
+		send_arp_response(sr, arphdr->ar_tha, ethPacket, iface, sizeof(struct sr_arphdr));
 	}
 
+}
+
+uint8_t* resolve(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface){
+
+	struct ip_eth_arp_tbl_entry* arp_entry = findArpEntry(iface->ip_eth_arp_tbl, ip);
+
+	const int arpEntryExpired = isArpEntryExpired(arp_entry);
+
+	if(arpEntryExpired){
+		//if the arp table entry has expired we delete it from
+		//the arp table. Three advantages in doing this:
+		//	1. free up memory
+		//	2. old entries for interfaces that got assigned
+		//		new ip address don't stay in arp table forever
+		//	3. when the corresponding arp response come back
+		//		it will always be put to the front of the list
+		//		so this reduce the lookup time for most recently
+		//		resoved arp entries.
+		deleteArpEntry(arp_entry, iface);
+	}
+
+	if((!arp_entry) || arpEntryExpired){
+		return NULL;
+	}
+	else{
+		return arp_entry->addr;
+	}
+}
+
+static void sendArpRequest(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface){
+
+}
+
+static void deleteArpEntry(struct ip_eth_arp_tbl_entry* arp_entry, struct sr_if* iface){
+
+	assert(arp_entry);
+
+	struct ip_eth_arp_tbl_entry* previous_entry = arp_entry->previous;
+	struct ip_eth_arp_tbl_entry* next_entry = arp_entry->next;
+
+	if(previous_entry){
+		previous_entry->next = next_entry;
+	}
+	else{
+		//the entry to be deleted is at the beginning
+		//of the linked list
+		iface->ip_eth_arp_tbl = next_entry;
+	}
+
+	if(next_entry){
+		next_entry->previous = previous_entry;
+	}
+
+	free(arp_entry);
+
+}
+
+static int isArpEntryExpired(struct ip_eth_arp_tbl_entry* arp_entry){
+	return difftime(time(NULL), arp_entry->last_modified) >= ARP_TBL_ENTRY_TTL;
 }
 
 static void setupArpResponse(struct sr_arphdr* arphdr, struct sr_if* iface){
@@ -117,8 +187,14 @@ static void addArpEntry(struct sr_if* iface, const uint32_t ip, uint8_t* mac){
 
 	//append the new entry to the front of the linked list
 	//representing the arp table
-	arp_entry->next = iface->ip_eth_arp_tbl;
+	struct ip_eth_arp_tbl_entry* first_arp_entry = iface->ip_eth_arp_tbl;
+	if(first_arp_entry){
+		first_arp_entry->previous = arp_entry;
+	}
+	arp_entry->next = first_arp_entry;
+	arp_entry->previous = NULL;
 	iface->ip_eth_arp_tbl = arp_entry;
+
 }
 
 static int updateArpEntry(struct ip_eth_arp_tbl_entry* arp_tbl, const uint32_t ip, uint8_t* mac){

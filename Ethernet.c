@@ -70,15 +70,19 @@ void handleEthPacket(struct sr_instance* sr,
 
 }
 
-void send_arp_response(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * ethPacket, struct sr_if* iface){
+void send_arp_response(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * ethPacket, struct sr_if* iface, unsigned int len){
 	struct sr_ethernet_hdr* eth_hdr = (struct sr_ethernet_hdr*)ethPacket;
 	MACcpy(eth_hdr->ether_dhost, dest_mac);
 	MACcpy(eth_hdr->ether_shost, iface->addr);
 	eth_hdr->ether_type = htons(ETHERTYPE_ARP);
 
-	unsigned int len = sizeof(struct sr_ethernet_hdr) + sizeof(struct sr_arphdr);
+	len += sizeof(struct sr_ethernet_hdr);
 	sr_send_packet( sr, ethPacket, len, iface->name);
 
+	//not freeing the memory allocated to ethPacket here since
+	//it is buffer allocated to store the eth packet comming from
+	//the vns server and sr_vns_comm.c will deallocated once all
+	//the method calls return
 }
 
 int MACcmp(const uint8_t* macAddr1, const uint8_t* macAddr2){

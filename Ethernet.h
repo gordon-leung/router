@@ -33,5 +33,15 @@ int MACcmp(const uint8_t* macAddr1, const uint8_t* macAddr2);
 /*Copy a mac address form src to dest*/
 void MACcpy(uint8_t* dest, uint8_t* src);
 
-/*Send an arp response*/
-void send_arp_response(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * ethPacket, struct sr_if* iface);
+/*Send an arp response
+ * @param sr the simple router instance
+ * @param dest_mac address of the interface where this
+ * 		arp response is to go
+ * @param ethPacket the eth frame encapsulating the arp
+ * 		response
+ * @param iface the interface on the router where the arp
+ * 		response is to be sent
+ * @param len the size in bytes of the arp packet (not including
+ * 		the size of the eth frame header)
+ * */
+void send_arp_response(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * ethPacket, struct sr_if* iface, unsigned int len);
