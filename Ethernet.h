@@ -8,6 +8,20 @@
 
 #define BROAD_CAST_MAC 255
 
+struct datagram_buff{
+	uint32_t ip;
+	char* iface_name;
+	struct datagram_buff_entry* datagram_buff_entry_list;
+	struct datagram_buff* next;
+	struct datagram_buff* previous;
+};
+
+struct datagram_buff_entry{
+	uint8_t* eth_frame;
+	unsigned int payload_len;
+	struct datagram_buff* next;
+};
+
 /*Handle the eth packet received.*/
 void handleEthPacket(struct sr_instance* sr,
         uint8_t * ethPacket,
@@ -54,6 +68,17 @@ void sendEthFrame_arp(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * eth_f
  * @param arp_request the arp request to be sent
  * @param iface the interface on this router where the eth frame
  * 		is sent from
- * @param payload_len the size of the arp request
+ * @param len the size of the arp request in bytes
  */
 void sendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if* iface, unsigned int payload_len);
+
+/*Send an IP datagram
+ * @param sr the router instance
+ * @param ip the ip addr of the target interface where
+ * 		the data is to be sent to
+ * @param ip_datagram the datagram to be sent
+ * @param interface the name of the interface where the datagram
+ * 		is to be sent out from
+ * @param len the size of the datagram in bytes
+ */
+void sendIPDatagram(struct sr_instance* sr, uint32_t ip, uint8_t * ip_datagram, char* interface, unsigned int len);

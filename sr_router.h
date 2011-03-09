@@ -57,6 +57,7 @@ struct sr_instance
     struct sr_if* if_list; /* list of interfaces */
     struct sr_rt* routing_table; /* routing table */
     FILE* logfile;
+    struct datagram_buff* datagram_buff_list;
 };
 
 /* -- sr_main.c -- */

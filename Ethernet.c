@@ -25,6 +25,8 @@ static int isFrameForMe(struct sr_instance* sr, struct sr_ethernet_hdr* eth_hdr,
 
 static void sendEthFrame(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * eth_frame, struct sr_if* iface, unsigned int payload_len);
 
+static uint8_t* encapsulate(uint8_t* payload, unsigned int payload_len);
+
 void handleEthPacket(struct sr_instance* sr,
         uint8_t * ethPacket,
         unsigned int len,
@@ -33,6 +35,8 @@ void handleEthPacket(struct sr_instance* sr,
 	assert(sr);
 	assert(ethPacket);
 	assert(interface);
+
+	//testSendArpRequest(sr);
 
 	//FIGURE OUT WHAT TO DO WITH INCOMING ETH PACKET
 	struct sr_ethernet_hdr* eth_hdr = NULL;
@@ -107,22 +111,62 @@ void handleEthPacket(struct sr_instance* sr,
 
 }
 
-void sendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if* iface, unsigned int payload_len){
+void sendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if* iface, unsigned int len){
 
-	uint8_t* eth_frame = (uint8_t*) malloc(sizeof(struct sr_ethernet_hdr) + payload_len);
-	assert(eth_frame);
-
-	//copy the arp request into the data field of the eth frame
-	memcpy(eth_frame + sizeof(struct sr_ethernet_hdr), arp_request, payload_len);
+	//encapsulate the arp_request in a eth frame
+	uint8_t* eth_frame = encapsulate(arp_request, len);
 
 	uint8_t dest_mac[ETHER_ADDR_LEN];
 	setBroadCastMAC(dest_mac);
 
-	sendEthFrame_arp(sr, dest_mac, eth_frame, iface, payload_len);
+	sendEthFrame_arp(sr, dest_mac, eth_frame, iface, len);
 
 	if(eth_frame){
 		free(eth_frame);
 	}
+}
+
+void sendIPDatagram(struct sr_instance* sr, uint32_t ip, uint8_t * ip_datagram, char* interface, unsigned int len){
+
+	//encapsulate the ip datagram in a eth frame
+	uint8_t* eth_frame = encapsulate(ip_datagram, len);
+
+	struct sr_ethernet_hdr* eth_hdr = (struct sr_ethernet_hdr*)eth_frame;
+	eth_hdr->ether_type = htons(ETHERTYPE_IP);
+
+	struct sr_if* iface = sr_get_interface(sr, interface);
+
+	uint8_t mac[ETHER_ADDR_LEN];
+	int resolveStatus = resolveMAC(sr, ip, iface, mac);
+
+	switch(resolveStatus){
+		case(ARP_RESOLVE_SUCCESS):
+		{
+			sendEthFrame(sr, mac, eth_frame, iface, len);
+			break;
+		}
+		case(ARP_REQUEST_SENT):
+		{
+			break;
+		}
+		case(ARP_RESOLVE_FAIL):
+		{
+			break;
+		}
+		default:
+			break;
+	}
+
+}
+
+static uint8_t* encapsulate(uint8_t* payload, unsigned int payload_len){
+	uint8_t* eth_frame = (uint8_t*) malloc(sizeof(struct sr_ethernet_hdr) + payload_len);
+	assert(eth_frame);
+
+	//copy the payload into the data field of the eth frame
+	memcpy(eth_frame + sizeof(struct sr_ethernet_hdr), payload, payload_len);
+
+	return eth_frame;
 }
 
 void sendEthFrame_arp(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * eth_frame, struct sr_if* iface, unsigned int payload_len){

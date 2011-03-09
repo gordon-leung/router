@@ -41,8 +41,11 @@ void sr_init(struct sr_instance* sr)
     struct sr_if* iface = sr->if_list;
     while(iface){
     	iface->ip_eth_arp_tbl = NULL;
+    	iface->arp_resolve_list = NULL;
     	iface = iface->next;
     }
+
+    sr->datagram_buff_list = NULL;
 
 } /* -- sr_init -- */
 

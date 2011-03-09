@@ -116,8 +116,7 @@ void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* 
 	}
 
 }
-
-uint8_t* resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface){
+int resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface, uint8_t* mac_buff){
 
 	int arpEntryExpired = FALSE;
 
@@ -149,10 +148,11 @@ uint8_t* resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* ifa
 		if(arp_request){
 			free(arp_request);
 		}
-		return NULL;
+		return ARP_REQUEST_SENT;
 	}
 	else{
-		return arp_entry->addr;
+		MACcpy(mac_buff, arp_entry->addr);
+		return ARP_RESOLVE_SUCCESS;
 	}
 }
 

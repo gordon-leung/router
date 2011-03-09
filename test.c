@@ -65,5 +65,6 @@ void testSendArpRequest(struct sr_instance* sr){
 	struct sr_if* iface = sr_get_interface(sr, "eth1");
 	uint32_t ip;
 	inet_pton(AF_INET, "171.67.245.29", &ip);
-	uint8_t* mac = resolveMAC(sr, ip, iface);
+	uint8_t mac[ETHER_ADDR_LEN];
+	resolveMAC(sr, ip, iface, mac);
 }

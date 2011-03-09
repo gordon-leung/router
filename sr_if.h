@@ -44,6 +44,7 @@ struct sr_if
     uint32_t ip;
     uint32_t speed;
     struct ip_eth_arp_tbl_entry* ip_eth_arp_tbl;
+    struct arp_resolve_list_item* arp_resolve_list;
     struct sr_if* next;
 };
 

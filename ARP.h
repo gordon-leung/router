@@ -13,6 +13,10 @@
 #define IP_ADDR_LEN 4
 #define ARP_TBL_ENTRY_TTL 15
 
+#define ARP_RESOLVE_SUCCESS 0
+#define ARP_REQUEST_SENT 1
+#define ARP_RESOLVE_FAIL 2
+
 /*represents an entry in the arp table.
  * The arp table is in the form of a linked list.*/
 struct ip_eth_arp_tbl_entry{
@@ -21,6 +25,19 @@ struct ip_eth_arp_tbl_entry{
 	time_t last_modified;
 	struct ip_eth_arp_tbl_entry* previous;
 	struct ip_eth_arp_tbl_entry* next;
+};
+
+/*for a given ip addr whose mac we wish to resolve
+ * this struct keeps strack of the time when the
+ * last arp request is sent and the number of arp
+ * requests sent so far
+ */
+struct arp_resolve_list_item{
+	uint32_t ip;
+	time_t last_arp_request_send_time;
+	unsigned short num_arp_request_sent;
+	struct arp_resolve_list_item* previous;
+	struct arp_resolve_list_item* next;
 };
 
 /*Handle a arp packet received from the specified interface.
@@ -41,8 +58,9 @@ void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* 
  * 		where the arp resolution is associated to
  * 		and where a arp request is to be sent
  * 		from if one is needed.
- * @return the pointer to the mac address resolved or NULL
- * 		if the resolution is not done an an arp request has
- * 		been sent.
+ * @param mac_buff the buffer for storing the mac addr resolved
+ * @return 0 if the resolution succeed, 1 if local resolution
+ * 	failed but an arp request is sent, 2 if arp resolution failed
+ * 	with arp requests
  */
-uint8_t* resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface);
+int resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface, uint8_t* mac_buff);
