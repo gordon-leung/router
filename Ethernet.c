@@ -63,21 +63,23 @@ void handleEthPacket(struct sr_instance* sr,
 				//TODO: handle ip datagram
 				//FIXME: can we put any ip related stuff into a class called IP.c?
 				ip_hdr = (struct ip*)(ethPacket + sizeof(struct sr_ethernet_hdr));//cast ip header
-
+/*
 				//compute checksum
 				checksum = ip_hdr->ip_sum;
 				printf("checksum original %x\n", checksum);
 				ip_hdr->ip_sum = 0; //checksum cleared
-				checksum = csum((uint16_t*)ip_hdr, 20);
+				checksum = csum((uint16_t*)ip_hdr, 4*(ip_hdr->ip_hl));
 				printf("checksum recomputed %x\n", checksum);
 				//
-				
+*/				
 				switch(ip_hdr->ip_p)
 				{
 					case (IPPROTO_ICMP):
 					{
 						printf("IP packet is of type ICMP!\n");
-						//if(icmp_reply(sr, packet, len, interface) == 0){ printf("Sent ICMP REPLY!\n"); }
+						if(icmp_reply(sr, ethPacket, len, interface) == 0){ 
+							printf("Sent ICMP REPLY!\n"); 
+						}
 						break;
 					}
 					default:
