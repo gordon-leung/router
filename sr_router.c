@@ -73,51 +73,11 @@ void sr_handlepacket(struct sr_instance* sr,
     assert(sr);
     assert(packet);
     assert(interface);
-
     printf("*** -> Received packet of length %d\n",len);
-
     handleEthPacket(sr, packet, len, interface);
 
-		//FIGURE OUT WHAT TO DO WITH INCOMING PACKET
-		struct sr_ethernet_hdr* e_hdr = 0;//init
-		struct ip*							ip_hdr= 0;//init
-		e_hdr = (struct sr_ethernet_hdr*)packet;//cast ethernet header
-		//TODO: Should figure out if packet is for us or not first.
-		switch(ntohs(e_hdr->ether_type))
-		{
-			case (ETHERTYPE_ARP): //ARP PACKET!
-			{
-				//TODO: Could actually be ARP request or ARP reply.
-				printf("Got ARP REQUEST!\n");
-				//if(arp_reply(sr, packet, len, interface) == 0){
-					//printf("Sent ARP REPLY!\n");
-				//}
-				break;
-			}
 
-			case (ETHERTYPE_IP): //IP PACKET!
-			{
-				printf("Got IP packet!\n");
-				ip_hdr = (struct ip*)(packet + sizeof(struct sr_ethernet_hdr));//cast ip header
-				
-				switch(ip_hdr->ip_p)
-				{
-					case (IPPROTO_ICMP):
-					{
-						printf("IP packet is of type ICMP!\n");
-						//if(icmp_reply(sr, packet, len, interface) == 0){ printf("Sent ICMP REPLY!\n"); }
-						break;
-					}
-					default:
-						printf("Unknown IP packet!\n");
-				}
-				break;
-			}
-			default:
-				printf("Unknown packet!\n");
-		}
-
-//		testmethod(sr, packet, len, interface); //for debug, learning purposes
+		testmethod(sr, packet, len, interface); //for debug, learning purposes
 }
 
 /*--------------------------------------------------------------------- 
@@ -127,7 +87,7 @@ void sr_handlepacket(struct sr_instance* sr,
  * And puts the interface mac addr into the source mac addr
  *---------------------------------------------------------------------*/
 void ethernet_swap_src_dest(struct sr_instance* sr, uint8_t * packet, char* interface){
-		struct sr_ethernet_hdr* e_hdr = 0;//init
+		struct sr_ethernet_hdr* e_hdr = NULL;//init
 		struct sr_if* iface = sr_get_interface(sr, interface); //packet is from which interface?
 		e_hdr = (struct sr_ethernet_hdr*)packet;//cast ethernet header
 		

@@ -7,8 +7,8 @@
  * Replies to an ICMP Request
  *---------------------------------------------------------------------*/
 int icmp_reply(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface){
-		struct ip*       	ip_hdr = 0;		//init
-		struct icmphdr*		icmp_hdr = 0; //init
+		struct ip*       	ip_hdr = NULL;	//init
+		struct icmphdr*		icmp_hdr = NULL;//init
 		struct sr_if* iface = sr_get_interface(sr, interface); //packet is from which interface?
 		unsigned long temp_addr = 0;
 //BEGIN ICMP REPLY MODIFICATION
@@ -21,8 +21,8 @@ int icmp_reply(struct sr_instance* sr, uint8_t * packet, unsigned int len, char*
 		printf("type of service %x\n",ip_hdr->ip_tos);//?
 		printf("len %d\n",ip_hdr->ip_len);//recompute length?
 		printf("identification %x\n",ip_hdr->ip_id);//?
-		//set time-to-live to 64
-		ip_hdr->ip_ttl = 64;
+		//set time-to-live
+		ip_hdr->ip_ttl = ICMP_TTL;
 		printf("time to live %x\n",ip_hdr->ip_ttl);
 		printf("checksum %x\n",ip_hdr->ip_sum);//need to recompute
 		//swap source addr with destination addr
@@ -34,8 +34,8 @@ int icmp_reply(struct sr_instance* sr, uint8_t * packet, unsigned int len, char*
 		//ICMP HEADER CHANGES
 		//cast icmp header
 		icmp_hdr = (struct icmphdr*)(packet+sizeof(struct sr_ethernet_hdr)+sizeof(struct ip));
-		//set type = 0 for ICMP REPLY
-		icmp_hdr->icmp_type = 0;
+		//set type = ICMP REPLY
+		icmp_hdr->icmp_type = ICMP_REPLY;
 		printf("icmp type %d\n", icmp_hdr->icmp_type);
 		printf("icmp code %x\n", icmp_hdr->icmp_code);
 		printf("icmp checksum %x\n", icmp_hdr->icmp_checksum);

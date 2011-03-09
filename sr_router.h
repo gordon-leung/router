@@ -17,6 +17,8 @@
 #include "sr_rt.h"
 #include "sr_protocol.h"
 
+#include "Defs.h"
+
 /* we dont like this debug , but what to do for varargs ? */
 #ifdef _DEBUG_
 #define Debug(x, args...) printf(x, ## args)

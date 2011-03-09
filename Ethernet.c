@@ -32,6 +32,7 @@ void handleEthPacket(struct sr_instance* sr,
 
 	//FIGURE OUT WHAT TO DO WITH INCOMING ETH PACKET
 	struct sr_ethernet_hdr* eth_hdr = NULL;
+	struct ip*							ip_hdr = NULL;
 	eth_hdr = (struct sr_ethernet_hdr*)ethPacket;//cast ethernet header
 	struct sr_if* iface = sr_get_interface(sr, interface); //the interface where the frame is received
 
@@ -43,6 +44,7 @@ void handleEthPacket(struct sr_instance* sr,
 	switch(ether_type){
 		case (ETHERTYPE_ARP): //ARP PACKET!
 		{
+			//TODO: Could actually be ARP request or ARP reply.
 			//if it is a eth arp packet we send it to arp component to see if any useful info
 			//can be extracted regarded if the eth frame is meant for us.
 			printf("Got ARP PACKET!\n");
@@ -56,16 +58,32 @@ void handleEthPacket(struct sr_instance* sr,
 
 			if(isFrameForMe(sr, eth_hdr, iface)){
 				//TODO: handle the pass the ip datagram to ip layer for handling
+				ip_hdr = (struct ip*)(ethPacket + sizeof(struct sr_ethernet_hdr));//cast ip header
+				switch(ip_hdr->ip_p)
+				{
+					case (IPPROTO_ICMP):
+					{
+						printf("IP packet is of type ICMP!\n");
+						//if(icmp_reply(sr, packet, len, interface) == 0){ printf("Sent ICMP REPLY!\n"); }
+						break;
+					}
+					default:
+					{
+						printf("Unknown IP packet!\n");
+						break;
+					}
+				}
 			}
 			else{
 				printf("eth frame not for me\n");
 			}
-
 			break;
 		}
 		default:
+		{
 			printf("Unknown packet type: %d!\n", ether_type );
 			break;
+		}
 	}
 
 }
