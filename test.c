@@ -1,4 +1,9 @@
+#include <stdint.h>
+
 #include "test.h"
+#include "sr_router.h"
+#include "sr_if.h"
+#include "ARP.h"
 
 /*--------------------------------------------------------------------- 
  * Method: testmethod for debug and learning purposes
@@ -54,4 +59,11 @@ void testmethod(struct sr_instance* sr, uint8_t * packet, unsigned int len, char
 			ip_hdr = (struct ip*)(packet + sizeof(struct sr_ethernet_hdr));
 			printf("IP protocol: %x\n",ip_hdr->ip_p);
 		}
+}
+
+void testSendArpRequest(struct sr_instance* sr){
+	struct sr_if* iface = sr_get_interface(sr, "eth1");
+	uint32_t ip;
+	inet_pton(AF_INET, "171.67.245.29", &ip);
+	uint8_t* mac = resolveMAC(sr, ip, iface);
 }

@@ -117,11 +117,15 @@ void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* 
 
 }
 
-uint8_t* resolve(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface){
+uint8_t* resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface){
+
+	int arpEntryExpired = FALSE;
 
 	struct ip_eth_arp_tbl_entry* arp_entry = findArpEntry(iface->ip_eth_arp_tbl, ip);
 
-	const int arpEntryExpired = isArpEntryExpired(arp_entry);
+	if(arp_entry){
+		arpEntryExpired = isArpEntryExpired(arp_entry);
+	}
 
 	if(arpEntryExpired){
 		//if the arp table entry has expired we delete it from
@@ -217,6 +221,7 @@ static void addArpEntry(struct sr_if* iface, const uint32_t ip, uint8_t* mac){
 
 	struct ip_eth_arp_tbl_entry* arp_entry = (struct ip_eth_arp_tbl_entry*) malloc(sizeof(struct ip_eth_arp_tbl_entry));
 
+	arp_entry->ip = ip;
 	MACcpy(arp_entry->addr, mac);
 	time(&(arp_entry->last_modified));
 
@@ -234,13 +239,13 @@ static void addArpEntry(struct sr_if* iface, const uint32_t ip, uint8_t* mac){
 
 static int updateArpEntry(struct ip_eth_arp_tbl_entry* arp_tbl, const uint32_t ip, uint8_t* mac){
 	struct ip_eth_arp_tbl_entry* arp_entry = findArpEntry(arp_tbl, ip);
-	if(arp_entry == NULL){
-		return FALSE;
-	}
-	else{
+	if(arp_entry){
 		MACcpy(arp_entry->addr, mac);
 		time(&(arp_entry->last_modified));
 		return TRUE;
+	}
+	else{
+		return FALSE;
 	}
 }
 
