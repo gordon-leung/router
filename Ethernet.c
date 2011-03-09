@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "Ethernet.h"
 #include "sr_protocol.h"
@@ -108,6 +109,20 @@ void handleEthPacket(struct sr_instance* sr,
 
 void sendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if* iface, unsigned int payload_len){
 
+	uint8_t* eth_frame = (uint8_t*) malloc(sizeof(struct sr_ethernet_hdr) + payload_len);
+	assert(eth_frame);
+
+	//copy the arp request into the data field of the eth frame
+	memcpy(eth_frame + sizeof(struct sr_ethernet_hdr), arp_request, payload_len);
+
+	uint8_t dest_mac[ETHER_ADDR_LEN];
+	setBroadCastMAC(dest_mac);
+
+	sendEthFrame_arp(sr, dest_mac, eth_frame, iface, payload_len);
+
+	if(eth_frame){
+		free(eth_frame);
+	}
 }
 
 void sendEthFrame_arp(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * eth_frame, struct sr_if* iface, unsigned int payload_len){

@@ -31,7 +31,7 @@ struct ip_eth_arp_tbl_entry{
  */
 void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* iface);
 
-/*Resulve the mac address the target interface's mac address.
+/*Resulve the mac address from the target interface's ip address.
  * A arp request may be sent if the corresponding arp table
  * entry does not already exist or has expired.
  * given target interface's ip address
@@ -45,4 +45,4 @@ void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* 
  * 		if the resolution is not done an an arp request has
  * 		been sent.
  */
-uint8_t* resolve(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface);
+uint8_t* resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface);
