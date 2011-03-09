@@ -18,5 +18,8 @@
 #define ICMP_PORT_UNREACHABLE 3
 #define ICMP_TIME_EXCEEDED 11
 #define ICMP_TIMEOUT 0
-
 #define ICMP_TTL 64
+
+#define IP_ICMP 1
+#define IP_TCP 6
+#define IP_UDP 17
