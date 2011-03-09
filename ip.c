@@ -46,3 +46,30 @@ int ip_hdr_check(struct sr_instance* sr, uint8_t * ethPacket, unsigned int len, 
 	
 	return 1;
 }
+
+void handleIPDatagram(struct sr_instance* sr, uint8_t* ip_datagram, unsigned int len){
+	/*TODO: this is the entry point into the ip layer. This method
+	 * will be called by the ethernet layer when it received an ip
+	 * datagram that is targeted for this router.
+	 *
+	 * A few things to do here:
+	 * 	1. run the ip hdr through the check sum code to make sure
+	 * 		the check sum is correct.
+	 * 		1.1 if the check sum is not correct, the datagram should
+	 * 			not be forwarded and instead the it should be passed
+	 * 			up to the icmp layer to generate an icmp message to
+	 * 			be snet back to the source host
+	 *
+	 * 2. if the check sum is fine then look up the forwarding table
+	 * 		to find out the next hop for the datagram
+	 * 		2.1 if ip datagram is destined for this router then figure
+	 * 			out what to do with it:
+	 * 			2.1.1 if it is an icmp message then pass it put to the
+	 * 				icmp layer
+	 * 			2.1.2 if it is anything else then also pass the datagram
+	 * 				to the icmp layer and tell it to generate an icmp
+	 * 				message back to the source host for destination
+	 * 				protocol unreachable (not sure aobut this, double check)
+	 *
+	 */
+}
