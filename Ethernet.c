@@ -61,9 +61,7 @@ void handleEthFrame(struct sr_instance* sr,
 
 	//testSendArpRequest(sr);
 
-	//FIGURE OUT WHAT TO DO WITH INCOMING ETH PACKET
-	struct sr_ethernet_hdr* eth_hdr = NULL;
-	eth_hdr = (struct sr_ethernet_hdr*)eth_frame;//cast ethernet header
+	struct sr_ethernet_hdr* eth_hdr = (struct sr_ethernet_hdr*)eth_frame;//cast ethernet header
 	struct sr_if* iface = sr_get_interface(sr, interface); //the interface where the frame is received
 
 	unsigned short ether_type = ntohs(eth_hdr->ether_type);
@@ -71,6 +69,7 @@ void handleEthFrame(struct sr_instance* sr,
 	//printEthMac(sr);
 	//printPacketHeader(eth_hdr);
 
+	//FIGURE OUT WHAT TO DO WITH INCOMING ETH PACKET
 	switch(ether_type){
 		case (ETHERTYPE_ARP): //ARP PACKET!
 		{
@@ -86,14 +85,16 @@ void handleEthFrame(struct sr_instance* sr,
 			printf("Got IP packet!\n");
 
 			if(isFrameForMe(sr, eth_hdr, iface)){
-				//FIXME: passing in the ip eth_fram and interface name is a hack
-				//change it to pass in the ip datagram and not pass in the interface
-				handleIPDatagram(sr, eth_frame, len, interface);
+
+				uint8_t* ip_datagram = eth_frame + sizeof(struct sr_ethernet_hdr);
+				unsigned int ip_datagram_len = len - sizeof(struct sr_ethernet_hdr);
+				handleIPDatagram(sr, eth_frame, ip_datagram, ip_datagram_len);
+
 			}
 			else{
-				//Just drop the eth frame because it is not even
-				//targetted for me.
-				printf("eth frame not for me\n");
+				//Nothing to do, frame is not for me
+				//just drop it.
+				printf("eth frame not for me, dropping it\n");
 			}
 
 			break;
