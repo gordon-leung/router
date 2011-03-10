@@ -16,7 +16,6 @@
 #include <stddef.h>
 
 #include "sr_router.h"
-#include "arp.h"
 #include "icmp.h"
 #include "test.h"
 
