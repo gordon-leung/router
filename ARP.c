@@ -116,7 +116,7 @@ void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* 
 	}
 	else if(ntohs(arphdr->ar_op) == ARP_REPLY){
 		//the gift arrived!!!
-		sendBufferedIPDatagrams(sr,  arphdr->ar_sip, arphdr->ar_sha, iface);
+		ethSendBufferedIPDatagrams(sr,  arphdr->ar_sip, arphdr->ar_sha, iface);
 	}
 
 }
@@ -148,7 +148,7 @@ int resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface, u
 		struct sr_arphdr* arp_request = (struct sr_arphdr*) malloc(sizeof(struct sr_arphdr));
 		assert(arp_request);
 		setupArpRequest(arp_request, ip, iface);
-		sendArpRequest(sr, (uint8_t*) arp_request, iface, sizeof(struct sr_arphdr));
+		ethSendArpRequest(sr, (uint8_t*) arp_request, iface, sizeof(struct sr_arphdr));
 		if(arp_request){
 			free(arp_request);
 		}

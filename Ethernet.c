@@ -67,7 +67,7 @@ static void bufferIPDatagram(struct sr_instance* sr, uint32_t ip, uint8_t * ip_d
  * 		is to be sent from
  * @param len the size of the ip datagram in bytes
  */
-static void sendIPDatagramWithMAC(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * ip_datagram, struct sr_if* iface, unsigned int len);
+static void sendIPDatagram(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * ip_datagram, struct sr_if* iface, unsigned int len);
 
 /*Try to find a buffer that matches the ip and interface
  * @param sr the router instance
@@ -197,7 +197,7 @@ void handleEthPacket(struct sr_instance* sr,
 
 }
 
-void sendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if* iface, unsigned int len){
+void ethSendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if* iface, unsigned int len){
 
 	//encapsulate the arp_request in a eth frame
 	uint8_t* eth_frame = encapsulate(arp_request, len);
@@ -212,7 +212,7 @@ void sendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if*
 	}
 }
 
-void sendIPDatagram(struct sr_instance* sr, uint32_t ip, uint8_t * ip_datagram, char* interface, unsigned int len){
+void ethSendIPDatagram(struct sr_instance* sr, uint32_t ip, uint8_t * ip_datagram, char* interface, unsigned int len){
 
 	struct sr_if* iface = sr_get_interface(sr, interface);
 
@@ -222,7 +222,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t ip, uint8_t * ip_datagram, 
 	switch(resolveStatus){
 		case(ARP_RESOLVE_SUCCESS):
 		{
-			sendIPDatagramWithMAC(sr, mac, ip_datagram, iface, len);
+			sendIPDatagram(sr, mac, ip_datagram, iface, len);
 			break;
 		}
 		case(ARP_REQUEST_SENT):
@@ -241,7 +241,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t ip, uint8_t * ip_datagram, 
 
 }
 
-void sendBufferedIPDatagrams(struct sr_instance* sr, uint32_t ip, uint8_t* dest_mac, struct sr_if* iface){
+void ethSendBufferedIPDatagrams(struct sr_instance* sr, uint32_t ip, uint8_t* dest_mac, struct sr_if* iface){
 
 	struct datagram_buff_entry* ip_datagram_list = removeIPDatagramBuffer(sr, ip, iface->name);
 
@@ -254,7 +254,7 @@ void sendBufferedIPDatagrams(struct sr_instance* sr, uint32_t ip, uint8_t* dest_
 			uint8_t* ip_datagram = ip_datagram_container->ip_datagram;
 			unsigned int ip_datagram_len = ip_datagram_container->len;
 
-			sendIPDatagramWithMAC(sr, dest_mac, ip_datagram, iface, ip_datagram_len);
+			sendIPDatagram(sr, dest_mac, ip_datagram, iface, ip_datagram_len);
 
 			if(ip_datagram){
 				free(ip_datagram);
@@ -374,7 +374,7 @@ static uint8_t* encapsulate(uint8_t* payload, unsigned int payload_len){
 	return eth_frame;
 }
 
-static void sendIPDatagramWithMAC(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * ip_datagram, struct sr_if* iface, unsigned int len){
+static void sendIPDatagram(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * ip_datagram, struct sr_if* iface, unsigned int len){
 	//encapsulate the ip datagram in a eth frame
 	uint8_t* eth_frame = encapsulate(ip_datagram, len);
 

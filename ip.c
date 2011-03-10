@@ -73,3 +73,14 @@ void handleIPDatagram(struct sr_instance* sr, uint8_t* ip_datagram, unsigned int
 	 *
 	 */
 }
+
+void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interface, uint8_t* ip_datagram, unsigned int len){
+
+	//if ttl is <= 1 send the datagram to icmp layer to send an icmp message
+	//specifiying that the datagram has expired
+
+	//dec ttl and recalculate the check sum
+
+	//send the datagram to the ethernet layer.
+
+}

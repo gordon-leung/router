@@ -80,7 +80,7 @@ void sendEthFrame_arp(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * eth_f
  * 		is sent from
  * @param len the size of the arp request in bytes
  */
-void sendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if* iface, unsigned int payload_len);
+void ethSendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if* iface, unsigned int payload_len);
 
 /*Send an IP datagram
  * @param sr the router instance
@@ -91,7 +91,7 @@ void sendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if*
  * 		is to be sent out from
  * @param len the size of the datagram in bytes
  */
-void sendIPDatagram(struct sr_instance* sr, uint32_t ip, uint8_t * ip_datagram, char* interface, unsigned int len);
+void ethSendIPDatagram(struct sr_instance* sr, uint32_t ip, uint8_t * ip_datagram, char* interface, unsigned int len);
 
 /*Send any ip datagrams that has been buffered because they
  * are waiting for arp resolution
@@ -103,5 +103,5 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t ip, uint8_t * ip_datagram, 
  *@param iface the interface on this router where the frame is to
  *		be sent from
  */
-void sendBufferedIPDatagrams(struct sr_instance* sr, uint32_t ip, uint8_t* dest_mac, struct sr_if* iface);
+void ethSendBufferedIPDatagrams(struct sr_instance* sr, uint32_t ip, uint8_t* dest_mac, struct sr_if* iface);
 
