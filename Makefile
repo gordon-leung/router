@@ -40,7 +40,7 @@ PURIFY= purify ${PFLAGS}
 
 sr_SRCS = sr_router.c sr_main.c  \
           sr_if.c sr_rt.c sr_vns_comm.c   \
-          sr_dumper.c sha1.c arp.c icmp.c test.c\
+          sr_dumper.c sha1.c icmp.c test.c\
           ARP.c Ethernet.c check.c ip.c
 
 sr_OBJS = $(patsubst %.c,%.o,$(sr_SRCS))
