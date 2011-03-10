@@ -17,6 +17,7 @@
 #include "sr_if.h"
 #include "ARP.h"
 #include "Defs.h"
+#include "ip.h"
 
 //static void printPacketHeader(struct sr_ethernet_hdr* eth_hdr);
 //static void printEthMac(struct sr_instance* sr);
@@ -126,7 +127,6 @@ void handleEthPacket(struct sr_instance* sr,
 
 	//FIGURE OUT WHAT TO DO WITH INCOMING ETH PACKET
 	struct sr_ethernet_hdr* eth_hdr = NULL;
-	struct ip* ip_hdr = NULL;
 	eth_hdr = (struct sr_ethernet_hdr*)ethPacket;//cast ethernet header
 	struct sr_if* iface = sr_get_interface(sr, interface); //the interface where the frame is received
 
@@ -151,34 +151,9 @@ void handleEthPacket(struct sr_instance* sr,
 			printf("Got IP packet!\n");
 
 			if(isFrameForMe(sr, eth_hdr, iface)){
-				//TODO: handle ip datagram
-				//FIXME: can we put any ip related stuff into a class called IP.c?
-				ip_hdr = (struct ip*)(ethPacket + sizeof(struct sr_ethernet_hdr));//cast ip header
-/*
-				//compute checksum
-				checksum = ip_hdr->ip_sum;
-				printf("checksum original %x\n", checksum);
-				ip_hdr->ip_sum = 0; //checksum cleared
-				checksum = csum((uint16_t*)ip_hdr, 4*(ip_hdr->ip_hl));
-				printf("checksum recomputed %x\n", checksum);
-				//
-*/				
-				switch(ip_hdr->ip_p)
-				{
-					case (IPPROTO_ICMP):
-					{
-						printf("IP packet is of type ICMP!\n");
-						if(icmp_reply(sr, ethPacket, len, interface) == 0){ 
-							printf("Sent ICMP REPLY!\n"); 
-						}
-						break;
-					}
-					default:
-					{
-						printf("Unknown IP packet!\n");
-						break;
-					}
-				}
+				//FIXME: passing in the ip eth_fram and interface name is a hack
+				//change it to pass in the ip datagram and not pass in the interface
+				handleIPDatagram(sr, ethPacket, len, interface);
 			}
 			else{
 				//Just drop the eth frame because it is not even

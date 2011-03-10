@@ -1,4 +1,5 @@
 #include "ip.h"
+#include "icmp.h"
 
 //TODO:These functions need to be tested. Especially for ntohs, htons.
 
@@ -47,7 +48,7 @@ int ip_hdr_check(struct sr_instance* sr, uint8_t * ethPacket, unsigned int len, 
 	return 1;
 }
 
-void handleIPDatagram(struct sr_instance* sr, uint8_t* ip_datagram, unsigned int len){
+void handleIPDatagram(struct sr_instance* sr, uint8_t* ip_datagram, unsigned int len, char* interface){
 	/*TODO: this is the entry point into the ip layer. This method
 	 * will be called by the ethernet layer when it received an ip
 	 * datagram that is targeted for this router.
@@ -72,6 +73,37 @@ void handleIPDatagram(struct sr_instance* sr, uint8_t* ip_datagram, unsigned int
 	 * 				protocol unreachable (not sure aobut this, double check)
 	 *
 	 */
+
+
+	struct ip* ip_hdr = NULL;
+	//TODO: handle ip datagram
+					//FIXME: can we put any ip related stuff into a class called IP.c?
+					ip_hdr = (struct ip*)(ip_datagram + sizeof(struct sr_ethernet_hdr));//cast ip header
+	/*
+					//compute checksum
+					checksum = ip_hdr->ip_sum;
+					printf("checksum original %x\n", checksum);
+					ip_hdr->ip_sum = 0; //checksum cleared
+					checksum = csum((uint16_t*)ip_hdr, 4*(ip_hdr->ip_hl));
+					printf("checksum recomputed %x\n", checksum);
+					//
+	*/
+					switch(ip_hdr->ip_p)
+					{
+						case (IPPROTO_ICMP):
+						{
+							printf("IP packet is of type ICMP!\n");
+							if(icmp_reply(sr, ip_datagram, len, interface) == 0){
+								printf("Sent ICMP REPLY!\n");
+							}
+							break;
+						}
+						default:
+						{
+							printf("Unknown IP packet!\n");
+							break;
+						}
+					}
 }
 
 void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interface, uint8_t* ip_datagram, unsigned int len){
