@@ -1,5 +1,9 @@
 #include "ip.h"
 #include "icmp.h"
+#include "IPDatagramBuffer.h"
+#include "ARP.h"
+#include "Ethernet.h"
+
 
 //TODO:These functions need to be tested. Especially for ntohs, htons.
 
@@ -113,6 +117,29 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 
 	//dec ttl and recalculate the check sum
 
-	//send the datagram to the ethernet layer.
+	struct sr_if* iface = sr_get_interface(sr, interface);
+
+	uint8_t mac[ETHER_ADDR_LEN];
+	int resolveStatus = resolveMAC(sr, next_hop_ip, iface, mac);
+
+	switch(resolveStatus){
+		case(ARP_RESOLVE_SUCCESS):
+		{
+			ethSendIPDatagram(sr, mac, ip_datagram, iface, len);
+			break;
+		}
+		case(ARP_REQUEST_SENT):
+		{
+			bufferIPDatagram(sr, next_hop_ip, ip_datagram, interface, len);
+			break;
+		}
+		case(ARP_RESOLVE_FAIL):
+		{
+			//TODO: tell ip layer about the bad new
+			break;
+		}
+		default:
+			break;
+	}
 
 }

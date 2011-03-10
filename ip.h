@@ -10,3 +10,5 @@ int ip_hdr_check(struct sr_instance* sr, uint8_t * ethPacket, unsigned int len, 
  * @param len the size of the ip datagram in bytes
  */
 void handleIPDatagram(struct sr_instance* sr, uint8_t* ip_datagram, unsigned int len, char* interface);//FIXME: passing in interface is a hack, remove it later
+
+void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interface, uint8_t* ip_datagram, unsigned int len);

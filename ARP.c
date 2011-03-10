@@ -16,6 +16,7 @@
 #include "sr_protocol.h"
 #include "Defs.h"
 #include "sr_router.h"
+#include "IPDatagramBuffer.h"
 
 /*prints the arp header for debugging purposes.*/
 //static void printArpPacketHdr(struct sr_arphdr* arphdr);
@@ -112,11 +113,11 @@ void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* 
 
 	if(ntohs(arphdr->ar_op) == ARP_REQUEST){
 		setupArpResponse(arphdr, iface);
-		sendEthFrame_arp(sr, arphdr->ar_tha, ethPacket, iface, sizeof(struct sr_arphdr));
+		sendEthFrameContainingArpMsg(sr, arphdr->ar_tha, ethPacket, iface, sizeof(struct sr_arphdr));
 	}
 	else if(ntohs(arphdr->ar_op) == ARP_REPLY){
 		//the gift arrived!!!
-		ethSendBufferedIPDatagrams(sr,  arphdr->ar_sip, arphdr->ar_sha, iface);
+		sendBufferedIPDatagrams(sr,  arphdr->ar_sip, arphdr->ar_sha, iface);
 	}
 
 }

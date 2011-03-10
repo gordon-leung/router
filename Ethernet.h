@@ -8,32 +8,9 @@
 
 #define BROAD_CAST_MAC 255
 
-/*A buffer that contain a linked list of ip
- * datagrams an the ip addr and interface
- * they are associate to. Buffers are also
- * chained together in a doublely linked list
- */
-struct datagram_buff{
-	uint32_t ip;
-	char* iface_name;
-	struct datagram_buff_entry* datagram_buff_entry_list;
-	struct datagram_buff* next;
-	struct datagram_buff* previous;
-};
-
-/*Used as a container in the datagram buffer
- * to hold an ip datagram and its size. Used
- * as a linked list to chain together all the
- * ip datagrams in the buffer
- */
-struct datagram_buff_entry{
-	uint8_t* ip_datagram;
-	unsigned int len;
-	struct datagram_buff_entry* next;
-};
 
 /*Handle the eth packet received.*/
-void handleEthPacket(struct sr_instance* sr,
+void handleEthFrame(struct sr_instance* sr,
         uint8_t * ethPacket,
         unsigned int len,
         char* interface);
@@ -71,7 +48,7 @@ void setBroadCastMAC(uint8_t* mac_buff);
  * @param payload_len the size in bytes of the arp message
  * 		(not including the size of the eth frame header)
  * */
-void sendEthFrame_arp(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * eth_frame, struct sr_if* iface, unsigned int payload_len);
+void sendEthFrameContainingArpMsg(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * eth_frame, struct sr_if* iface, unsigned int payload_len);
 
 /*Send an eth frame encapsulating an arp request
  * @param sr the router instance
@@ -84,24 +61,22 @@ void ethSendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_
 
 /*Send an IP datagram
  * @param sr the router instance
- * @param ip the ip addr of the target interface where
+ * @param dest_mac the mac addr of the target interface where
  * 		the data is to be sent to
  * @param ip_datagram the datagram to be sent
- * @param interface the name of the interface where the datagram
+ * @param iface the interface where the datagram
  * 		is to be sent out from
  * @param len the size of the datagram in bytes
  */
-void ethSendIPDatagram(struct sr_instance* sr, uint32_t ip, uint8_t * ip_datagram, char* interface, unsigned int len);
+void ethSendIPDatagram(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * ip_datagram, struct sr_if* iface, unsigned int len);
 
-/*Send any ip datagrams that has been buffered because they
- * are waiting for arp resolution
- *@param sr the router instance
- *@param ip the ip addr of the target interface where the frame
- *		is to be sent to
- *@param dest_mac the mac addr of the interface where the frame
- *		is to be sent to
- *@param iface the interface on this router where the frame is to
- *		be sent from
+/*Sends an eth frame containing an ip datagram in
+ * its data field
+ * @param sr the router instance
+ * @param dest_mac the mac address of the interface
+ * 		where the eth frame is to be sent to
+ * @param iface the interface on this router that is
+ * 		used to send out the eth frame
+ * @param payload_len the size of the ip datagram in bytes
  */
-void ethSendBufferedIPDatagrams(struct sr_instance* sr, uint32_t ip, uint8_t* dest_mac, struct sr_if* iface);
-
+void sendEthFrameContainingIPDatagram(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * eth_frame, struct sr_if* iface, unsigned int payload_len);
