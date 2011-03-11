@@ -151,7 +151,8 @@ static struct datagram_buff* addNewIPDatagramBufferIfNotExist(struct sr_instance
 	struct datagram_buff* buff = findIPDatagramBuffer(sr, ip, interface);
 
 	if(!buff){//no buffer for this ip addr yet. create it
-		struct datagram_buff* buff = (struct datagram_buff*)malloc(sizeof(struct datagram_buff));
+		buff = (struct datagram_buff*)malloc(sizeof(struct datagram_buff));
+		assert(buff);
 		buff->next = sr->datagram_buff_list;
 		if(sr->datagram_buff_list){
 			sr->datagram_buff_list->previous = buff;

@@ -118,7 +118,7 @@ void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_da
 
 	struct ip* ip_hdr = (struct ip*)ip_datagram;
 
-	//check ip header
+	//TODO: check ip header and checksum
 
 	if(ipDatagramDestinedForMe(sr, ip_hdr->ip_dst.s_addr)){
 		processIPDatagramDestinedForMe(sr, eth_frame, ip_datagram, ip_datagram_len);
@@ -178,7 +178,9 @@ static void forward(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_data
 	struct sr_rt* rt_entry_with_longest_prefix = lookupRoutingTable(sr, ip_hdr->ip_dst.s_addr);
 
 	if(rt_entry_with_longest_prefix){
-
+		uint32_t next_hop_ip = rt_entry_with_longest_prefix->gw.s_addr;
+		char* interface = rt_entry_with_longest_prefix->interface;
+		sendIPDatagram(sr, next_hop_ip, interface, ip_datagram, eth_frame, ip_datagram_len);
 	}
 	else{
 		//no matching routing table entry returned.
@@ -213,9 +215,9 @@ static struct sr_rt* lookupRoutingTable(struct sr_instance* sr, uint32_t dest_ho
 
 }
 
-void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interface, uint8_t* ip_datagram, unsigned int len){
+void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interface, uint8_t* ip_datagram, uint8_t* eth_frame, unsigned int ip_datagram_len){
 
-	//if ttl is <= 1 send the datagram to icmp layer to send an icmp message
+	//if ttl equals 0 send the datagram to icmp layer to send an icmp message
 	//specifiying that the datagram has expired
 
 	//dec ttl and recalculate the check sum
@@ -228,12 +230,18 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 	switch(resolveStatus){
 		case(ARP_RESOLVE_SUCCESS):
 		{
-			ethSendIPDatagram(sr, mac, ip_datagram, iface, len);
+			if(eth_frame){
+				//the ip datagram is already encapsulated in a eth frame
+				sendEthFrameContainingIPDatagram(sr, mac, eth_frame, iface, ip_datagram_len);
+			}
+			else{
+				ethSendIPDatagram(sr, mac, ip_datagram, iface, ip_datagram_len);
+			}
 			break;
 		}
 		case(ARP_REQUEST_SENT):
 		{
-			bufferIPDatagram(sr, next_hop_ip, ip_datagram, interface, len);
+			bufferIPDatagram(sr, next_hop_ip, ip_datagram, interface, ip_datagram_len);
 			break;
 		}
 		case(ARP_RESOLVE_FAIL):
