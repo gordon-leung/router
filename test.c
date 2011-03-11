@@ -27,7 +27,9 @@ void testmethod(struct sr_instance* sr, uint8_t * packet, unsigned int len, char
 		}
 		printf("\n");
 		e_hdr = (struct sr_ethernet_hdr*)packet;//cast ethernet header
+		printf("ethernet type: %x\n",(int)(e_hdr->ether_type)); //ethernet type
 		printf("ethernet type: %x\n",(int)ntohs(e_hdr->ether_type)); //ethernet type
+		printf("ethernet type: %x\n",(int)(e_hdr->ether_type)); //ethernet type
 		printf("Destination mac address: ");
 		for(int i=0; i<ETHER_ADDR_LEN; i++){//destination mac address
 			printf("%x",e_hdr->ether_dhost[i]);

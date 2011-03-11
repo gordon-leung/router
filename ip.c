@@ -143,8 +143,12 @@ static void processIPDatagramDestinedForMe(struct sr_instance* sr, uint8_t* eth_
 	if(ip_hdr->ip_p == IPPROTO_ICMP){
 		//TODO: call icmp to handle the icmp message received
 		printf("IP packet is of type ICMP!\n");
-		if(icmp_reply(sr, eth_frame, ip_datagram_len + 14, "eth0") == 0){
-			printf("Sent ICMP REPLY!\n");
+		struct icmphdr* icmp_hdr = (struct icmphdr*)(ip_datagram+sizeof(struct ip));
+		if(icmp_hdr->icmp_type == ICMP_REQUEST){
+			printf("Got ICMP REQUEST!\n");
+			if(icmp_reply(sr, eth_frame, ip_datagram_len + 14, "eth0") == 0){
+				printf("Sent ICMP REPLY!\n");
+			}
 		}
 	}
 	else{
