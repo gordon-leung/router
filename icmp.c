@@ -114,3 +114,84 @@ uint8_t * create_icmp(struct sr_instance* sr, uint8_t * ip_datagram, int type, i
 
 		return (uint8_t*)icmp_hdr;
 }
+
+void ipDatagramTimeExceeded(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len){
+
+	//icmp fields to be set:
+	//type = 11
+	//code = 0
+
+	//dest_ip = the ip_datagram's sender's ip addr
+
+	//allocate memory/buffer for just the icmp message, not the ip datagram and not the eth frame
+	//i.e. just allocate enough memory for the type field, code field, checksum field, unused field
+	//and the internet header + 64 bits of the ip_datagram passed in.
+	//It should be at least 28 bytes but since ip datagram's header can be more than 20 bytes long
+	//due to options, the size need to be calculated dynamically
+
+	//for the icmp message, fill in the type field, code field, and make sure the 4 bytes of unused
+	//space are all 0
+
+	//copy the ip_datagram's headder and the first 8 bytes of ip_datagram data into the icmp message
+
+	//recalculate the checksum
+
+	// call sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip);
+
+	//free the buffer allocated for the icmp message
+
+}
+
+void destinationUnreachable(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len, unsigned short code){
+
+	//icmp fields to be set:
+	//type = 3
+	//code = the code param passed in
+
+	//dest_ip = the ip_datagram's sender's ip addr
+
+	//refer to ipDatagramTimeExceeded(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len)
+	//to see what to do next;
+}
+
+void parameterProblem(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len, unsigned short code, uint8_t pointer){
+
+	//icmp fields to be set:
+	//type = 12
+	//code = the code param passed in
+	//pointer = the pointer arg passed in
+
+	//dest_ip = the ip_datagram's sender's ip addr
+
+	//refer to ipDatagramTimeExceeded(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len)
+	//to see what to do next;
+}
+
+void handleIcmpMessageReceived(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len){
+
+	//do check sum
+	//if check sum failed then just drop it and return, nothing more to do here
+
+	//for the icmp message encapsulated in this ip_datagram, make sure the type is 8
+	//for echo request. we only handle echo request icmp, aka ping, message and for
+	//any other types of icmp message we simply drop it and return
+
+	//icmp fields to be set
+	//type = 0
+	//code = 0
+
+	//dest_ip = the ip_datagram's sender's ip addr
+
+	//here we don't need to construct a new icmp message, just reuse the one in the
+	//ip_datagram. u have to calculate base on the ip datagram header size to see
+	//where the icmp message begins
+
+	//fill in the type field, the code field and leave the rest the same
+
+	//recalculate checksum
+
+	// call sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip);
+
+	//note: no need to free any buffer here since we didn't allocate any in this
+	//function
+}
