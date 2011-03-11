@@ -19,7 +19,7 @@
 #include "IPDatagramBuffer.h"
 
 /*prints the arp header for debugging purposes.*/
-//static void printArpPacketHdr(struct sr_arphdr* arphdr);
+static void printArpPacketHdr(struct sr_arphdr* arphdr);
 
 /*Updates the arp table with the ip mac pair passed in
  * @return 1 if the entry exists in the arp table thus update succeeds
@@ -61,6 +61,56 @@ static void deleteArpEntry(struct ip_eth_arp_tbl_entry* arp_entry, struct sr_if*
  */
 static void setupArpRequest(struct sr_arphdr* arphdr, const uint32_t ip, struct sr_if* iface);
 
+/*Try to resolve the mac from ip by sending a arp request
+ * @param sr the router instance
+ * @param ip the addr of the interface whose mac addr we
+ * 		try to resolve
+ * @param iface the interface on this router where the eth
+ * 		frame containing the arp request is going to be
+ * 		sent out from
+ * @return 1 if an arp request has been sent, 2 if the
+ * 		resolution failed because we exceeded the number
+ * 		of arp requests sent for this resolution
+ */
+static int resolveWithArpRequest(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface);
+
+/*For a given ip addr, add a arp request tracker for it
+ * if it does not already exist, and return the track
+ * @param ip the ip addr
+ * @param iface the corresponding iface struct where the
+ * 		tracker can be found or to be added to
+ * @return an existing arp request tracker matching the ip
+ * 		passed in or a new one just created for the ip
+ */
+static struct arp_request_tracker* addArpRequestTrackerIfNotExist(const uint32_t ip, struct sr_if* iface);
+
+/*Try to find the arp request track corresponding to the
+ * ip passed in
+ * @param ip the ip
+ * @param iface the sr_if struct that contains the list
+ * 		of arp request trackers of interest
+ * @return the arp request tracker whose ip field matches
+ * 		the ip passed in, or NULL no such arp request tracker
+ * 		esists
+ */
+static struct arp_request_tracker* findArpRequestTracker(const uint32_t ip, struct sr_if* iface);
+
+/*Check to see if an arp request can be sent again for
+ * a given ip addr
+ * @param tracker the arp request tracker
+ * @return 1 if arp request can be sent again, 0 otherwise
+ */
+static int canSendArpRequestAgain(struct arp_request_tracker* tracker);
+
+/*Delete the arp request tracker corresponding to the ip
+ * passed, if it exists, from the list of arp request tracker
+ * in the sr_if struct passed
+ *@param ip the ip
+ *@param iface the sr_if struct containing the arp request tracker
+ *		list
+ */
+static void deleteArpRequestTracker(const uint32_t ip, struct sr_if* iface);
+
 
 void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* iface){
 
@@ -68,7 +118,7 @@ void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* 
 
 	assert(arphdr);
 
-	//printArpPacketHdr(arphdr);
+	printArpPacketHdr(arphdr);
 
 	if(ntohs(arphdr->ar_hrd) != ARPHDR_ETHER){
 		//hardware address space is not of type ethernet
@@ -117,10 +167,12 @@ void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* 
 	}
 	else if(ntohs(arphdr->ar_op) == ARP_REPLY){
 		//the gift arrived!!!
+		deleteArpRequestTracker(arphdr->ar_sip, iface);
 		sendBufferedIPDatagrams(sr,  arphdr->ar_sip, arphdr->ar_sha, iface);
 	}
 
 }
+
 int resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface, uint8_t* mac_buff){
 
 	int arpEntryExpired = FALSE;
@@ -146,6 +198,24 @@ int resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface, u
 
 	if((!arp_entry) || arpEntryExpired){
 		//need to resolve by sending an arp request. do it!
+		return resolveWithArpRequest(sr, ip, iface);
+	}
+	else{
+		MACcpy(mac_buff, arp_entry->addr);
+		return ARP_RESOLVE_SUCCESS;
+	}
+}
+
+static int resolveWithArpRequest(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface){
+
+	struct arp_request_tracker* tracker = addArpRequestTrackerIfNotExist(ip, iface);
+
+	if(tracker->num_arp_request_sent >= MAX_NUM_ARP_REQUESTS){
+		deleteArpRequestTracker(ip, iface);
+		return ARP_RESOLVE_FAIL;
+	}
+	else if( canSendArpRequestAgain(tracker) ){
+
 		struct sr_arphdr* arp_request = (struct sr_arphdr*) malloc(sizeof(struct sr_arphdr));
 		assert(arp_request);
 		setupArpRequest(arp_request, ip, iface);
@@ -153,12 +223,87 @@ int resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface, u
 		if(arp_request){
 			free(arp_request);
 		}
-		return ARP_REQUEST_SENT;
+
+		tracker->num_arp_request_sent ++;
+		time(&(tracker->last_arp_request_send_time));
 	}
 	else{
-		MACcpy(mac_buff, arp_entry->addr);
-		return ARP_RESOLVE_SUCCESS;
+		//don't need to send now because one has just
+		//been sent recently
 	}
+
+	return ARP_REQUEST_SENT;
+
+}
+
+static void deleteArpRequestTracker(const uint32_t ip, struct sr_if* iface){
+
+	struct arp_request_tracker* tracker = findArpRequestTracker(ip, iface);
+
+	if(tracker){
+		struct arp_request_tracker* previous_tracker = tracker->previous;
+		struct arp_request_tracker* next_tracker = tracker->next;
+
+		if(previous_tracker){
+			previous_tracker->next = next_tracker;
+		}
+		else{
+			//the current tracker is at the beginning of the list
+			iface->arp_request_tracker_list = next_tracker;
+		}
+
+		if(next_tracker){
+			next_tracker->previous = previous_tracker;
+		}
+
+		free(tracker);
+	}
+
+}
+
+static int canSendArpRequestAgain(struct arp_request_tracker* tracker){
+
+	double time_since_last_sent = difftime(time(NULL), tracker->last_arp_request_send_time);
+	return (tracker->num_arp_request_sent < MAX_NUM_ARP_REQUESTS)
+			&& ((tracker->num_arp_request_sent == 0) || (time_since_last_sent >= ARP_REQUEST_WAIT_TIME));
+
+}
+
+static struct arp_request_tracker* addArpRequestTrackerIfNotExist(const uint32_t ip, struct sr_if* iface){
+
+	struct arp_request_tracker* tracker = findArpRequestTracker(ip, iface);
+
+	if(!tracker){
+		//no tracker exist for the corresponding ip addr
+		//create a new one for it
+
+		tracker = (struct arp_request_tracker*) malloc(sizeof(struct arp_request_tracker));
+		assert(tracker);
+
+		tracker->ip = ip;
+		time(&(tracker->last_arp_request_send_time));
+		tracker->num_arp_request_sent = 0;
+		tracker->previous = NULL;
+		tracker->next = iface->arp_request_tracker_list;
+		iface->arp_request_tracker_list = tracker;
+	}
+
+	return tracker;
+
+}
+
+static struct arp_request_tracker* findArpRequestTracker(const uint32_t ip, struct sr_if* iface){
+
+	struct arp_request_tracker* tracker = iface->arp_request_tracker_list;
+
+	while(tracker){
+		if(tracker->ip == ip){
+			return tracker;
+		}
+		tracker = tracker->next;
+	}
+
+	return NULL;
 }
 
 static void setupArpRequest(struct sr_arphdr* arphdr, const uint32_t ip, struct sr_if* iface){
@@ -265,7 +410,7 @@ static struct ip_eth_arp_tbl_entry* findArpEntry(struct ip_eth_arp_tbl_entry* ar
 	return NULL;
 }
 
-/*static void printArpPacketHdr(struct sr_arphdr* arphdr){
+static void printArpPacketHdr(struct sr_arphdr* arphdr){
 	printf("\n");
 	printf("ARP header:\n");
 	printf("Hrd addr space: %d\n", ntohs(arphdr->ar_hrd));
@@ -291,4 +436,4 @@ static struct ip_eth_arp_tbl_entry* findArpEntry(struct ip_eth_arp_tbl_entry* ar
 	dotted_ip[INET_ADDRSTRLEN] = '\0';
 	printf("Target ip: %s\n", dotted_ip);
 	printf("\n");
-}*/
+}

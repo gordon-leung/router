@@ -18,7 +18,7 @@
 #include "ip.h"
 #include "test.h"
 
-//static void printPacketHeader(struct sr_ethernet_hdr* eth_hdr);
+static void printPacketHeader(struct sr_ethernet_hdr* eth_hdr);
 //static void printEthMac(struct sr_instance* sr);
 
 /*Determine if the eth frame if targeted for the interface where
@@ -166,6 +166,8 @@ static void sendEthFrame(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * et
 
 	MACcpy(eth_hdr->ether_dhost, dest_mac);
 	MACcpy(eth_hdr->ether_shost, iface->addr);
+
+	//printPacketHeader(eth_hdr);
 
 	unsigned int frame_len = sizeof(struct sr_ethernet_hdr) + payload_len;
 

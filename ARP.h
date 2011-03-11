@@ -13,6 +13,15 @@
 #define IP_ADDR_LEN 4
 #define ARP_TBL_ENTRY_TTL 15
 
+//the time to wait before the next arp
+//request for the same ip can be sent
+//again. measure in seconds
+#define ARP_REQUEST_WAIT_TIME 0.01
+
+//the max number of arp requests that
+//can be sent for the same ip
+#define MAX_NUM_ARP_REQUESTS 5
+
 #define ARP_RESOLVE_SUCCESS 0
 #define ARP_REQUEST_SENT 1
 #define ARP_RESOLVE_FAIL 2
@@ -32,12 +41,12 @@ struct ip_eth_arp_tbl_entry{
  * last arp request is sent and the number of arp
  * requests sent so far
  */
-struct arp_resolve_list_item{
+struct arp_request_tracker{
 	uint32_t ip;
 	time_t last_arp_request_send_time;
 	unsigned short num_arp_request_sent;
-	struct arp_resolve_list_item* previous;
-	struct arp_resolve_list_item* next;
+	struct arp_request_tracker* previous;
+	struct arp_request_tracker* next;
 };
 
 /*Handle a arp packet received from the specified interface.

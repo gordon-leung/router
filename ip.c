@@ -250,7 +250,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 		}
 		case(ARP_RESOLVE_FAIL):
 		{
-			//TODO: tell ip layer about the bad new
+			//TODO: tell ip datagram buffer about the bad new
 			break;
 		}
 		default:
