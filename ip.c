@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "ip.h"
 #include "icmp.h"
@@ -235,12 +237,30 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 }
 
 void sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip){
+		int ip_size = 2*sizeof(struct ip) + ICMP_ERROR_SIZE;
+		uint8_t* ip_hdr = (uint8_t*)malloc(ip_size);
+		memset(ip_hdr, 0, ip_size);
+		
+		//SET IP FIELDS
+		((struct ip*)ip_hdr)->ip_v = 4;
+		((struct ip*)ip_hdr)->ip_hl = 5;
+		((struct ip*)ip_hdr)->ip_len = htons(ip_size);
+		((struct ip*)ip_hdr)->ip_ttl = ICMP_TTL;
+		((struct ip*)ip_hdr)->ip_p = IP_ICMP;
+		((struct ip*)ip_hdr)->ip_src = sr->routing_table->dest;	//TODO:is this our addr?
+		((struct ip*)ip_hdr)->ip_dst.s_addr = dest_ip;
+		((struct ip*)ip_hdr)->ip_sum = csum((uint16_t*)ip_hdr, sizeof(struct ip));
+		memcpy(ip_hdr+sizeof(struct ip), icmp_message, icmp_msg_len);
 
+		//TODO:check all values in IP datagram
+		//TODO:ready to send ip datagram to ethernet now
+
+		free(ip_hdr);
 }
 
 static void ip_dec_ttl(struct ip* ip_hdr){
 
-	assert(ip_hdr->ip_ttl != 0);
+	assert(ip_hdr->ip_ttl > 1);
 
 	ip_hdr->ip_ttl--;
 	ip_hdr->ip_sum = 0; //clear checksum
