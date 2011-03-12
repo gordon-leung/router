@@ -17,7 +17,14 @@ int icmp_reply(struct sr_instance* sr, uint8_t * packet, unsigned int len, char*
 
 //BEGIN ICMP REPLY MODIFICATION
 		//ETHERNET HEADER CHANGES
-		ethernet_swap_src_dest(sr, packet, interface);
+		struct sr_ethernet_hdr* e_hdr = NULL;//init
+		struct sr_if* iface = sr_get_interface(sr, interface); //packet is from which interface?
+		e_hdr = (struct sr_ethernet_hdr*)packet;//cast ethernet header
+		
+		for(int i=0; i<ETHER_ADDR_LEN; i++){
+			e_hdr->ether_dhost[i] = e_hdr->ether_shost[i];
+			e_hdr->ether_shost[i] = iface->addr[i];
+		}
 
 		//IP HEADER CHANGES
 		ip_hdr = (struct ip*)(packet + sizeof(struct sr_ethernet_hdr));//cast ip header
