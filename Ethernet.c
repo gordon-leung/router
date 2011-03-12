@@ -60,8 +60,8 @@ void handleEthFrame(struct sr_instance* sr,
 	assert(interface);
 
 	//testSendArpRequest(sr);
-	printf("\nnum of datagram buffers (before): %d\n", sr->num_of_datagram_buffers);
-	printf("\nnum datagram buffered (before): %d\n", sr->num_datagrams_buffed);
+	//printf("\nnum of datagram buffers (before): %d\n", sr->num_of_datagram_buffers);
+	//printf("\nnum datagram buffered (before): %d\n", sr->num_datagrams_buffed);
 
 	struct sr_ethernet_hdr* eth_hdr = (struct sr_ethernet_hdr*)eth_frame;//cast ethernet header
 	struct sr_if* iface = sr_get_interface(sr, interface); //the interface where the frame is received
