@@ -1,9 +1,14 @@
 #include <stdint.h>
+#include <stdlib.h>
+#include <assert.h>
 
 #include "test.h"
 #include "sr_router.h"
 #include "sr_if.h"
 #include "ARP.h"
+#include "ip.h"
+#include "icmp.h"
+#include "check.h"
 
 /*--------------------------------------------------------------------- 
  * Method: testmethod for debug and learning purposes
@@ -69,4 +74,36 @@ void testSendArpRequest(struct sr_instance* sr){
 	inet_pton(AF_INET, "171.67.245.29", &ip);
 	uint8_t mac[ETHER_ADDR_LEN];
 	resolveMAC(sr, ip, iface, mac);
+}
+
+void testSendIcmpMsg(struct sr_instance* sr){
+	uint8_t icmp_msg_len = MIN_ICMP_MSG_LEN;
+	uint8_t* icmp_msg = (uint8_t*)malloc(icmp_msg_len);
+	assert(icmp_msg);
+
+	struct icmphdr* icmp_msg_hdr = (struct icmphdr*)icmp_msg;
+
+	icmp_msg_hdr->icmp_type = 8;
+	icmp_msg_hdr->icmp_code = 0;
+	icmp_msg_hdr->icmp_checksum = 0;
+
+	*((uint32_t*)(icmp_msg + 4)) = 0;
+
+	int checksum = csum((uint16_t*) icmp_msg, icmp_msg_len*4);
+
+	icmp_msg_hdr->icmp_checksum = checksum;
+
+	char* dest_doted_ip = "171.67.245.29";
+	uint32_t dest_ip = 0;
+	inet_pton(AF_INET, dest_doted_ip, &dest_ip);
+
+	char* src_doted_ip = "171.67.245.28";
+	uint32_t src_ip = 0;
+	inet_pton(AF_INET, src_doted_ip, &src_ip);
+
+	sendIcmpMessageWithSrcIP(sr, icmp_msg, icmp_msg_len, dest_ip, src_ip);
+
+	if(icmp_msg){
+		free(icmp_msg);
+	}
 }

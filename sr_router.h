@@ -57,11 +57,11 @@ struct sr_instance
     struct sr_if* if_list; /* list of interfaces */
     struct sr_rt* routing_table; /* routing table */
     FILE* logfile;
-    struct datagram_buff* datagram_buff_list;
-    int num_datagrams_buffed;
-    int num_of_datagram_buffers;
-    int num_arp_entries;
-    int num_arp_request_trackers;
+    struct datagram_buff* datagram_buff_list; /*the list of ip datagram buffers*/
+    int num_datagrams_buffed;	/*the number of ip datagrams buffered*/
+    int num_of_datagram_buffers;	/*the number of ip datagram buffers currently exist*/
+    int num_arp_entries;	/*the number of arp table entries currently exist*/
+    int num_arp_request_trackers;	/*the number of arp request trackers currently exist*/
 };
 
 /* -- sr_main.c -- */

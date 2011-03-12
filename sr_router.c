@@ -23,6 +23,7 @@
 #include "sr_rt.h"
 #include "sr_protocol.h"
 #include "Ethernet.h"
+#include "test.h"
 
 /*--------------------------------------------------------------------- 
  * Method: sr_init(void)
@@ -58,6 +59,8 @@ void initInterfaces(struct sr_instance* sr){
 	   	iface->sr = sr;
 	   	iface = iface->next;
 	}
+
+	//testSendIcmpMsg(sr);
 }
 
 

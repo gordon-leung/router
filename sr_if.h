@@ -43,8 +43,8 @@ struct sr_if
     unsigned char addr[6];
     uint32_t ip;
     uint32_t speed;
-    struct ip_eth_arp_tbl_entry* ip_eth_arp_tbl;
-    struct arp_request_tracker* arp_request_tracker_list;
+    struct ip_eth_arp_tbl_entry* ip_eth_arp_tbl;	/*the arp table associated to this interface instance*/
+    struct arp_request_tracker* arp_request_tracker_list;	/*the list of arp request trackers associated to this interface instance*/
     struct sr_if* next;
     struct sr_instance* sr;
 };

@@ -1,5 +1,7 @@
 #include "sr_router.h"
 
+#define MIN_ICMP_MSG_LEN 8 //8 bytes for at least the icmp header
+
 int icmp_reply(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface);
 
 uint8_t* create_icmp(struct sr_instance* sr, uint8_t * ip_datagram, int type, int code);

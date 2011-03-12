@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "ip.h"
 #include "icmp.h"
@@ -56,6 +58,18 @@ static int ipDatagramShouldBeDropped(struct ip ip_hdr);
  * @param ip_hdr the header of the ip datagram
  */
 static void ip_dec_ttl(struct ip* ip_hdr);
+
+/*Set up the header for the ip datagram encapsulating an icmp
+ * message
+ *@param ip_hdr the ip header
+ *@param ip_datagram_total_len the size of the entire ip
+ *		datagram in bytes
+ *@param src_ip the source ip addr, which should be one of
+ *		the ip addr assigned to this router
+ *@param dest_ip the destination host's ip addr where the
+ *		icmp message is to be sent to
+ */
+static void setupIPHeaderForICMP(struct ip* ip_hdr, uint16_t ip_datagram_total_len, uint32_t src_ip, uint32_t dest_ip);
 
 
 void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_datagram, unsigned int ip_datagram_len){
@@ -216,6 +230,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 		case(ARP_REQUEST_SENT):
 		{
 			bufferIPDatagram(sr, next_hop_ip, ip_datagram, interface, ip_datagram_len);
+			printf("ip packet buffered\n");
 			break;
 		}
 		case(ARP_RESOLVE_FAIL):
@@ -236,6 +251,76 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 
 void sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip){
 
+	assert(icmp_msg_len >= MIN_ICMP_MSG_LEN);
+	assert(icmp_message);
+	assert(sr);
+	assert(dest_ip);
+
+	//so no source ip addr is specified, for now we will use
+	//the ip addr of one of the interface on this router that
+	//happens to be the first one ont eh if_list. Don't think
+	//this would cause any trouble at the moment but ideally it
+	//should be the ip addr of the interface that received the
+	//ip datagram which caused this icmp message to be sent
+	struct sr_if* iface = sr->if_list;
+	assert(iface);
+	sendIcmpMessageWithSrcIP(sr, icmp_message, icmp_msg_len, dest_ip, iface->ip);
+}
+
+void sendIcmpMessageWithSrcIP(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip, uint32_t src_ip){
+
+	assert(icmp_msg_len >= MIN_ICMP_MSG_LEN);
+	assert(icmp_message);
+	assert(sr);
+	assert(src_ip);
+	assert(dest_ip);
+
+	//before we do anything, find out what is the next hop ip
+	//is for this ip datagram as well as which interface on
+	//this router to use to send out the eth frame encapsulating
+	//this ip datagram
+	struct sr_rt* rt_entry_with_longest_prefix = lookupRoutingTable(sr, dest_ip);
+
+	if(!rt_entry_with_longest_prefix){
+		//looks like there is no way to send this icmp message
+		//too bad, nothing to do anymore, just return
+		return;
+	}
+
+	uint16_t ip_datagram_total_len = sizeof(struct ip) + icmp_msg_len;
+	uint8_t* ip_datagram = (uint8_t*)malloc(ip_datagram_total_len);
+	assert(ip_datagram);
+
+	setupIPHeaderForICMP((struct ip*)ip_datagram, ip_datagram_total_len, src_ip, dest_ip);
+
+	//copy the icmp message into the data field of the ip datagram
+	memcpy(ip_datagram + sizeof(struct ip), icmp_message, icmp_msg_len);
+
+	uint32_t next_hop_ip = 	rt_entry_with_longest_prefix->gw.s_addr;
+	char* interface = rt_entry_with_longest_prefix->interface;
+	sendIPDatagram(sr, next_hop_ip, interface, ip_datagram, NULL, ip_datagram_total_len);
+
+	if(ip_datagram){
+		free(ip_datagram);
+	}
+}
+
+static void setupIPHeaderForICMP(struct ip* ip_hdr, uint16_t ip_datagram_total_len, uint32_t src_ip, uint32_t dest_ip){
+
+	ip_hdr->ip_v = IPV4_VERSION;
+	ip_hdr->ip_hl = DEFAULT_IP_HEADER_LEN;
+	ip_hdr->ip_tos = DEFAULT_IP_TOS;
+	ip_hdr->ip_len = htons(ip_datagram_total_len);
+
+	ip_hdr->ip_id = htons(DEFAULT_IP_ID);
+	ip_hdr->ip_off = htons(DEFAULT_IP_FRAGMENT);
+
+	ip_hdr->ip_ttl = DEFAULT_IP_TTL;
+	ip_hdr->ip_p = IPPROTO_ICMP;
+
+	ip_hdr->ip_src.s_addr = src_ip;
+
+	ip_hdr->ip_dst.s_addr = dest_ip;
 }
 
 static void ip_dec_ttl(struct ip* ip_hdr){
