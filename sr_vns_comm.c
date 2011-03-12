@@ -218,6 +218,8 @@ int sr_handle_hwinfo(struct sr_instance* sr, c_hwinfo* hwinfo)
     printf("Router interfaces:\n");
     sr_print_if_list(sr);
 
+    initInterfaces(sr);
+
     return num_entries;
 } /* -- sr_handle_hwinfo -- */
 

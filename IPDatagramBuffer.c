@@ -12,6 +12,7 @@
 #include "IPDatagramBuffer.h"
 #include "sr_if.h"
 #include "Ethernet.h"
+#include "sr_protocol.h"
 
 
 /*Try to find a buffer that matches the ip and interface
@@ -57,35 +58,80 @@ static void addIPDatagramToBuffer(uint8_t * ip_datagram, unsigned int len, struc
  */
 static struct datagram_buff_entry* removeIPDatagramBuffer(struct sr_instance* sr, uint32_t ip, char* interface);
 
+/*Extract the next ip datagram, along with its length, from the list
+ * of datagram_buff_entry structs
+ * @param sr the router instance
+ * @param ip_datagram_list_ptr the pointer to the list of datagram_buff_entry
+ * 		structs
+ * @param len_buff_ptr the pointer to the buffer used to store the length of
+ * 		the extracted datagram
+ * @return the ip datagram extracted if the list is not empty, NULL otherwise
+ */
+static uint8_t* extractNextIPDatagram(struct sr_instance* sr, struct datagram_buff_entry** ip_datagram_list_ptr, unsigned int* len_buff_ptr);
+
 
 void sendBufferedIPDatagrams(struct sr_instance* sr, uint32_t ip, uint8_t* dest_mac, struct sr_if* iface){
 
 	struct datagram_buff_entry* ip_datagram_list = removeIPDatagramBuffer(sr, ip, iface->name);
 
-	if(ip_datagram_list){
+	uint8_t* ip_datagram = NULL;
+	unsigned int ip_datagram_len = 0;
 
-		struct datagram_buff_entry* ip_datagram_container = ip_datagram_list;
+	while((ip_datagram = extractNextIPDatagram(sr, &ip_datagram_list, &ip_datagram_len))){
 
-		while(ip_datagram_container){
+		ethSendIPDatagram(sr, dest_mac, ip_datagram, iface, ip_datagram_len);
 
-			uint8_t* ip_datagram = ip_datagram_container->ip_datagram;
-			assert(ip_datagram);
+		free(ip_datagram);
 
-			unsigned int ip_datagram_len = ip_datagram_container->len;
+	}
 
-			ethSendIPDatagram(sr, dest_mac, ip_datagram, iface, ip_datagram_len);
+}
 
-			struct datagram_buff_entry* current_container = ip_datagram_container;
-			ip_datagram_container = current_container->next;
+void handleUndeliverableBufferedIPDatagram(struct sr_instance* sr, uint32_t ip, struct sr_if* iface){
 
-			free(current_container);
-			free(ip_datagram);
+	struct datagram_buff_entry* ip_datagram_list = removeIPDatagramBuffer(sr, ip, iface->name);
 
+	uint8_t* ip_datagram = NULL;
+	unsigned int ip_datagram_len = 0;
+
+	while((ip_datagram = extractNextIPDatagram(sr, &ip_datagram_list, &ip_datagram_len))){
+
+		if( ((struct ip*)ip_datagram)->ip_p != IPPROTO_ICMP ){
+			//only send icmp message about a ip datagram if its payload
+			//is not an icmp message because we should not send icmp message
+			//about another icmp message
+
+			//TODO:call icmp to send a message back to the sender of the ip
+			//datagram
 		}
+
+		free(ip_datagram);
+
 	}
-	else{
-		//nothing to send... yae
+
+}
+
+static uint8_t* extractNextIPDatagram(struct sr_instance* sr, struct datagram_buff_entry** ip_datagram_list_ptr, unsigned int* len_buff_ptr){
+
+	struct datagram_buff_entry* ip_datagram_container = *ip_datagram_list_ptr;
+
+	uint8_t* ip_datagram = NULL;
+
+	if(ip_datagram_container){
+
+		ip_datagram = ip_datagram_container->ip_datagram;
+		assert(ip_datagram);
+
+		*len_buff_ptr = ip_datagram_container->len;
+
+		*ip_datagram_list_ptr = ip_datagram_container->next;
+
+		free(ip_datagram_container);
+
+		sr->num_datagrams_buffed--;
 	}
+
+	return ip_datagram;
 
 }
 
@@ -95,6 +141,7 @@ void bufferIPDatagram(struct sr_instance* sr, uint32_t ip, uint8_t * ip_datagram
 
 	addIPDatagramToBuffer(ip_datagram, len, buff);
 
+	sr->num_datagrams_buffed++;
 }
 
 static struct datagram_buff_entry* removeIPDatagramBuffer(struct sr_instance* sr, uint32_t ip, char* interface){
@@ -126,6 +173,8 @@ static struct datagram_buff_entry* removeIPDatagramBuffer(struct sr_instance* sr
 		}
 
 		free(buff);
+
+		sr->num_of_datagram_buffers --;
 	}
 
 	return ip_datagram_list;
@@ -164,6 +213,8 @@ static struct datagram_buff* addNewIPDatagramBufferIfNotExist(struct sr_instance
 		buff->ip = ip;
 		buff->iface_name = interface;
 		buff->datagram_buff_entry_list = NULL;
+
+		sr->num_of_datagram_buffers++;
 	}
 
 	return buff;

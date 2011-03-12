@@ -32,7 +32,6 @@ struct datagram_buff_entry{
 	struct datagram_buff_entry* next;
 };
 
-
 /*Send any ip datagrams that has been buffered because they
  * are waiting for arp resolution
  *@param sr the router instance
@@ -54,3 +53,12 @@ void sendBufferedIPDatagrams(struct sr_instance* sr, uint32_t ip, uint8_t* dest_
  * @param len the size of the ip datagram in bytes
  */
 void bufferIPDatagram(struct sr_instance* sr, uint32_t ip, uint8_t * ip_datagram, char* interface, unsigned int len);
+
+/*Tell the buffer the handle any buffered ip datagrams that can't
+ * be delivered
+ * @param sr the router instance
+ * @param ip the ip of the next hop that can't be reached
+ * @param iface the interface on this router that was to be used
+ * 		to send out the buffered ip datagrams
+ */
+void handleUndeliverableBufferedIPDatagram(struct sr_instance* sr, uint32_t ip, struct sr_if* iface);

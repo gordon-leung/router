@@ -58,6 +58,10 @@ struct sr_instance
     struct sr_rt* routing_table; /* routing table */
     FILE* logfile;
     struct datagram_buff* datagram_buff_list;
+    int num_datagrams_buffed;
+    int num_of_datagram_buffers;
+    int num_arp_entries;
+    int num_arp_request_trackers;
 };
 
 /* -- sr_main.c -- */
@@ -81,3 +85,6 @@ void sr_set_ether_addr(struct sr_instance* , const unsigned char* );
 void sr_print_if_list(struct sr_instance* );
 
 #endif /* SR_ROUTER_H */
+
+//Initializes interface structs
+void initInterfaces(struct sr_instance* sr);

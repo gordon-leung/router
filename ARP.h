@@ -30,7 +30,7 @@
  * The arp table is in the form of a linked list.*/
 struct ip_eth_arp_tbl_entry{
 	uint32_t ip;
-	unsigned char addr[6];
+	unsigned char mac_addr[ETHER_ADDR_LEN];
 	time_t last_modified;
 	struct ip_eth_arp_tbl_entry* previous;
 	struct ip_eth_arp_tbl_entry* next;

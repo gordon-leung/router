@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "ip.h"
 #include "icmp.h"
 #include "IPDatagramBuffer.h"
@@ -42,53 +44,19 @@ static void processIPDatagramDestinedForMe(struct sr_instance* sr, uint8_t* eth_
  */
 static int ipDatagramDestinedForMe(struct sr_instance* sr, uint32_t dest_host_ip);
 
+/*Checks the header of the ip datagram to determine if the ip
+ * datagram should be dropped by the router
+ * @param ip_hdr the ip header to be checked
+ * @return 1 if the ip datagram should be dropped, 0 otherwise
+ */
+static int ipDatagramShouldBeDropped(struct ip ip_hdr);
 
-//TODO:These functions need to be tested. Especially for ntohs, htons.
+/*Decrement the ttl field in the ip datagrams header and
+ * recalculate the checksum
+ * @param ip_hdr the header of the ip datagram
+ */
+static void ip_dec_ttl(struct ip* ip_hdr);
 
-//If TTL <= 1, then generate ICMP timeout packet
-//Else Decrement TTL, recompute checksum, and send
-int ip_dec_ttl(struct sr_instance* sr, uint8_t * ethPacket, unsigned int len, char* interface){
-	struct ip* ip_hdr = NULL;
-	ip_hdr = (struct ip*)(ethPacket + sizeof(struct sr_ethernet_hdr));//cast ip header
-	if(ip_hdr->ip_ttl <= 1){
-		//send icmp
-		return -1;
-	}
-	else{
-		ip_hdr->ip_ttl--;
-		ip_hdr->ip_sum = 0; //clear checksum
-		ip_hdr->ip_sum = csum((uint16_t*)ip_hdr, 4*(ip_hdr->ip_hl)); //recompute
-
-		//send it out
-	}
-	return 0;
-}
-
-//Check if IP datagram is valid, else drop it.
-//Return -1 on fail
-//Return 1 on success
-int ip_hdr_check(struct sr_instance* sr, uint8_t * ethPacket, unsigned int len, char* interface){
-
-	struct ip* ip_hdr = NULL;
-	ip_hdr = (struct ip*)(ethPacket + sizeof(struct sr_ethernet_hdr));//cast ip header
-	if(ntohs(ip_hdr->ip_len) < 20){//datagram too short.
-		return -1;
-	}
-	if(ntohs(ip_hdr->ip_v) != 4){//not IP_V4
-		return -1;
-	}
-	if(ntohs(ip_hdr->ip_hl) > 5){//datagram has options set, drop it
-		return -1;
-	}
-	uint16_t checksum = ip_hdr->ip_sum;
-	ip_hdr->ip_sum = 0; //clear checksum
-	//recompute and check
-	if(checksum != csum((uint16_t*)ip_hdr, 4*(ip_hdr->ip_hl))){
-		return -1;
-	}
-	
-	return 1;
-}
 
 void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_datagram, unsigned int ip_datagram_len){
 	/*TODO: this is the entry point into the ip layer. This method
@@ -118,7 +86,12 @@ void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_da
 
 	struct ip* ip_hdr = (struct ip*)ip_datagram;
 
-	//TODO: check ip header and checksum
+	if(ipDatagramShouldBeDropped(*ip_hdr)){
+		//the check sum check didn't pass or the ip
+		//datagram is of the type that can't be handled
+		//by this router, drop it.
+		return;
+	}
 
 	if(ipDatagramDestinedForMe(sr, ip_hdr->ip_dst.s_addr)){
 		processIPDatagramDestinedForMe(sr, eth_frame, ip_datagram, ip_datagram_len);
@@ -129,7 +102,7 @@ void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_da
 	}
 	else{
 		//ip datagram is not destined for me and
-		//ttl has expired.
+		//ttl has expired, so can't be forwarded
 		//TODO: call icmp to send an icmp message back
 		//to sending host saying time exceeded
 	}
@@ -221,10 +194,7 @@ static struct sr_rt* lookupRoutingTable(struct sr_instance* sr, uint32_t dest_ho
 
 void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interface, uint8_t* ip_datagram, uint8_t* eth_frame, unsigned int ip_datagram_len){
 
-	//if ttl equals 0 send the datagram to icmp layer to send an icmp message
-	//specifiying that the datagram has expired
-
-	//dec ttl and recalculate the check sum
+	ip_dec_ttl((struct ip*) ip_datagram);
 
 	struct sr_if* iface = sr_get_interface(sr, interface);
 
@@ -250,7 +220,12 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 		}
 		case(ARP_RESOLVE_FAIL):
 		{
-			//TODO: tell ip datagram buffer about the bad new
+			//bad news, the next hop is unreachable. call icmp to handle
+			//this ip datagram, as well as all the ones buffered waiting
+			//to be delivered to the same next hop.
+			//TODO: call icmp to send an icmp message back to the sender of
+			//this ip datagram
+			handleUndeliverableBufferedIPDatagram(sr, next_hop_ip, iface);
 			break;
 		}
 		default:
@@ -261,4 +236,35 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 
 void sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip){
 
+}
+
+static void ip_dec_ttl(struct ip* ip_hdr){
+
+	assert(ip_hdr->ip_ttl != 0);
+
+	ip_hdr->ip_ttl--;
+	ip_hdr->ip_sum = 0; //clear checksum
+	ip_hdr->ip_sum = csum((uint16_t*)ip_hdr, 4*(ip_hdr->ip_hl)); //recompute
+}
+
+
+static int ipDatagramShouldBeDropped(struct ip ip_hdr){
+
+	if(ntohs(ip_hdr.ip_len) < 20){//datagram too short.
+		return TRUE;
+	}
+	if(ip_hdr.ip_v != 4){//not IP_V4
+		return TRUE;
+	}
+	if(ip_hdr.ip_hl > 5){//datagram has options set, drop it
+		return TRUE;
+	}
+	uint16_t checksum = ip_hdr.ip_sum;
+	ip_hdr.ip_sum = 0; //clear checksum
+	//recompute and check
+	if(checksum != csum((uint16_t*) &ip_hdr, 4*(ip_hdr.ip_hl))){
+		return TRUE;
+	}
+
+	return FALSE;
 }

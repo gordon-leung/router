@@ -37,17 +37,28 @@ void sr_init(struct sr_instance* sr)
     /* REQUIRES */
     assert(sr);
 
-    struct sr_if* iface = sr->if_list;
-    while(iface){
-    	iface->ip_eth_arp_tbl = NULL;
-    	iface->arp_request_tracker_list = NULL;
-    	iface = iface->next;
-    }
-
     sr->datagram_buff_list = NULL;
+    sr->num_datagrams_buffed = 0;
+    sr->num_of_datagram_buffers = 0;
+
+    sr->num_arp_entries = 0;
+
+    sr->num_arp_request_trackers = 0;
 
 } /* -- sr_init -- */
 
+
+void initInterfaces(struct sr_instance* sr){
+	assert(sr);
+
+	struct sr_if* iface = sr->if_list;
+	while(iface){
+		iface->ip_eth_arp_tbl = NULL;
+	   	iface->arp_request_tracker_list = NULL;
+	   	iface->sr = sr;
+	   	iface = iface->next;
+	}
+}
 
 
 /*---------------------------------------------------------------------

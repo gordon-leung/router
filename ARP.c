@@ -18,8 +18,12 @@
 #include "sr_router.h"
 #include "IPDatagramBuffer.h"
 
-/*prints the arp header for debugging purposes.*/
-static void printArpPacketHdr(struct sr_arphdr* arphdr);
+/**********************************************************************/
+/*For debugging purposes***********************************************/
+//static void printArpPacketHdr(struct sr_arphdr* arphdr);
+//static void printArpTables(struct sr_instance* sr);
+//static void printArpStats(struct sr_instance* sr, char* title);
+/**********************************************************************/
 
 /*Updates the arp table with the ip mac pair passed in
  * @return 1 if the entry exists in the arp table thus update succeeds
@@ -118,7 +122,8 @@ void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* 
 
 	assert(arphdr);
 
-	printArpPacketHdr(arphdr);
+	//printArpPacketHdr(arphdr);
+	//printArpStats(sr, "before");
 
 	if(ntohs(arphdr->ar_hrd) != ARPHDR_ETHER){
 		//hardware address space is not of type ethernet
@@ -171,6 +176,8 @@ void handleArpPacket(struct sr_instance* sr, uint8_t * ethPacket, struct sr_if* 
 		sendBufferedIPDatagrams(sr,  arphdr->ar_sip, arphdr->ar_sha, iface);
 	}
 
+	//printArpStats(sr, "after");
+
 }
 
 int resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface, uint8_t* mac_buff){
@@ -201,7 +208,7 @@ int resolveMAC(struct sr_instance* sr, const uint32_t ip, struct sr_if* iface, u
 		return resolveWithArpRequest(sr, ip, iface);
 	}
 	else{
-		MACcpy(mac_buff, arp_entry->addr);
+		MACcpy(mac_buff, arp_entry->mac_addr);
 		return ARP_RESOLVE_SUCCESS;
 	}
 }
@@ -257,6 +264,7 @@ static void deleteArpRequestTracker(const uint32_t ip, struct sr_if* iface){
 		}
 
 		free(tracker);
+		iface->sr->num_arp_request_trackers--;
 	}
 
 }
@@ -286,6 +294,8 @@ static struct arp_request_tracker* addArpRequestTrackerIfNotExist(const uint32_t
 		tracker->previous = NULL;
 		tracker->next = iface->arp_request_tracker_list;
 		iface->arp_request_tracker_list = tracker;
+
+		iface->sr->num_arp_request_trackers++;
 	}
 
 	return tracker;
@@ -349,6 +359,7 @@ static void deleteArpEntry(struct ip_eth_arp_tbl_entry* arp_entry, struct sr_if*
 	}
 
 	free(arp_entry);
+	iface->sr->num_arp_entries--;
 
 }
 
@@ -372,7 +383,7 @@ static void addArpEntry(struct sr_if* iface, const uint32_t ip, uint8_t* mac){
 	struct ip_eth_arp_tbl_entry* arp_entry = (struct ip_eth_arp_tbl_entry*) malloc(sizeof(struct ip_eth_arp_tbl_entry));
 
 	arp_entry->ip = ip;
-	MACcpy(arp_entry->addr, mac);
+	MACcpy(arp_entry->mac_addr, mac);
 	time(&(arp_entry->last_modified));
 
 	//append the new entry to the front of the linked list
@@ -385,12 +396,14 @@ static void addArpEntry(struct sr_if* iface, const uint32_t ip, uint8_t* mac){
 	arp_entry->previous = NULL;
 	iface->ip_eth_arp_tbl = arp_entry;
 
+	iface->sr->num_arp_entries++;
+
 }
 
 static int updateArpEntry(struct ip_eth_arp_tbl_entry* arp_tbl, const uint32_t ip, uint8_t* mac){
 	struct ip_eth_arp_tbl_entry* arp_entry = findArpEntry(arp_tbl, ip);
 	if(arp_entry){
-		MACcpy(arp_entry->addr, mac);
+		MACcpy(arp_entry->mac_addr, mac);
 		time(&(arp_entry->last_modified));
 		return TRUE;
 	}
@@ -410,7 +423,7 @@ static struct ip_eth_arp_tbl_entry* findArpEntry(struct ip_eth_arp_tbl_entry* ar
 	return NULL;
 }
 
-static void printArpPacketHdr(struct sr_arphdr* arphdr){
+/*static void printArpPacketHdr(struct sr_arphdr* arphdr){
 	printf("\n");
 	printf("ARP header:\n");
 	printf("Hrd addr space: %d\n", ntohs(arphdr->ar_hrd));
@@ -436,4 +449,46 @@ static void printArpPacketHdr(struct sr_arphdr* arphdr){
 	dotted_ip[INET_ADDRSTRLEN] = '\0';
 	printf("Target ip: %s\n", dotted_ip);
 	printf("\n");
-}
+}*/
+
+/*static void printArpTables(struct sr_instance* sr){
+
+	struct sr_if* iface = sr->if_list;
+
+	printf("\n");
+	while(iface){
+		printf("Interface %s arp table:\n", iface->name);
+
+		struct ip_eth_arp_tbl_entry* arp_tbl_entry = iface->ip_eth_arp_tbl;
+
+		while(arp_tbl_entry){
+			char dotted_ip[INET_ADDRSTRLEN];
+			inet_ntop(AF_INET, &(arp_tbl_entry->ip), dotted_ip, INET_ADDRSTRLEN);
+			printf("%s\t", dotted_ip);
+			printEthAddr(arp_tbl_entry->mac_addr);
+			printf("\t");
+			printf("%s\n",ctime(&(arp_tbl_entry->last_modified)));
+			arp_tbl_entry = arp_tbl_entry->next;
+		}
+
+		iface = iface->next;
+
+		printf("\n");
+	}
+	printf("\n");
+
+}*/
+
+/*static void printArpStats(struct sr_instance* sr, char* title){
+
+	printf("\n");
+	printf("***************************************************************\n");
+	printf("arp tables (after)\n");
+	printArpTables(sr);
+	printf("***************************************************************\n");
+	printf("\n");
+
+	printf("\nnum arp entries (after): %d\n\n", sr->num_arp_entries);
+	printf("\nnum arp request trackers (after): %d\n\n", sr->num_arp_request_trackers);
+
+}*/

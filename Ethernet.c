@@ -18,7 +18,7 @@
 #include "ip.h"
 #include "test.h"
 
-static void printPacketHeader(struct sr_ethernet_hdr* eth_hdr);
+//static void printPacketHeader(struct sr_ethernet_hdr* eth_hdr);
 //static void printEthMac(struct sr_instance* sr);
 
 /*Determine if the eth frame if targeted for the interface where
@@ -60,6 +60,8 @@ void handleEthFrame(struct sr_instance* sr,
 	assert(interface);
 
 	//testSendArpRequest(sr);
+	printf("\nnum of datagram buffers (before): %d\n", sr->num_of_datagram_buffers);
+	printf("\nnum datagram buffered (before): %d\n", sr->num_datagrams_buffed);
 
 	struct sr_ethernet_hdr* eth_hdr = (struct sr_ethernet_hdr*)eth_frame;//cast ethernet header
 	struct sr_if* iface = sr_get_interface(sr, interface); //the interface where the frame is received
@@ -105,6 +107,9 @@ void handleEthFrame(struct sr_instance* sr,
 			break;
 		}
 	}
+
+	//printf("\nnum of datagram buffers (after): %d\n", sr->num_of_datagram_buffers);
+	//printf("\nnum datagram buffered (after): %d\n", sr->num_datagrams_buffed);
 
 }
 

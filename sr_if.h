@@ -46,6 +46,7 @@ struct sr_if
     struct ip_eth_arp_tbl_entry* ip_eth_arp_tbl;
     struct arp_request_tracker* arp_request_tracker_list;
     struct sr_if* next;
+    struct sr_instance* sr;
 };
 
 struct sr_if* sr_get_interface(struct sr_instance* sr, const char* name);
