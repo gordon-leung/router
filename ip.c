@@ -98,8 +98,8 @@ void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_da
 	if(ipDatagramDestinedForMe(sr, ip_hdr->ip_dst.s_addr)){
 		processIPDatagramDestinedForMe(sr, eth_frame, ip_datagram, ip_datagram_len);
 	}
-	else if(ip_hdr->ip_ttl != 0){
-		//ttl greater than 0, we can try to forward it
+	else if(ip_hdr->ip_ttl > 1){
+		//ttl greater than 1, we can try to forward it
 		forward(sr, eth_frame, ip_datagram, ip_datagram_len);
 	}
 	else{

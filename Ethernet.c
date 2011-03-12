@@ -50,10 +50,7 @@ static uint8_t* encapsulate(uint8_t* payload, unsigned int payload_len);
 
 
 
-void handleEthFrame(struct sr_instance* sr,
-        uint8_t * eth_frame,
-        unsigned int len,
-        char* interface){
+void handleEthFrame(struct sr_instance* sr, uint8_t * eth_frame, unsigned int len, char* interface){
 
 	assert(sr);
 	assert(eth_frame);
