@@ -110,8 +110,10 @@ void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_da
 	if(ipDatagramDestinedForMe(sr, ip_hdr->ip_dst.s_addr)){
 		processIPDatagramDestinedForMe(sr, eth_frame, ip_datagram, ip_datagram_len);
 	}
-	else if(ip_hdr->ip_ttl > 1){
-		//ttl greater than 1, we can try to forward it
+	else if(ip_hdr->ip_ttl > 0){
+		//ttl greater than 0, we can try to forward it
+		//even if ttl is now 1 we can still forward it
+		//because the next hop maybe the destination!!
 		forward(sr, eth_frame, ip_datagram, ip_datagram_len);
 	}
 	else{
@@ -346,7 +348,9 @@ static void setupIPHeaderForICMP(struct ip* ip_hdr, uint16_t ip_datagram_total_l
 
 static void ip_dec_ttl(struct ip* ip_hdr){
 
-	assert(ip_hdr->ip_ttl > 1);
+	//even if ttl is now 1 we can still forward it
+	//because the next hop maybe the destination!!
+	assert(ip_hdr->ip_ttl > 0);
 
 	ip_hdr->ip_ttl--;
 	ip_hdr->ip_sum = 0; //clear checksum
