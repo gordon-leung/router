@@ -102,7 +102,6 @@ uint8_t* create_icmp(struct sr_instance* sr, uint8_t * ip_datagram, int type, in
 				//recompute icmp checksum
 				icmp_hdr->icmp_checksum = 0;
 				icmp_hdr->icmp_checksum = csum((uint16_t*)icmp_hdr, (ntohs((ip_hdr->ip_len)) - 4*(ip_hdr->ip_hl)));
-
 				break;
 			}
 			case ICMP_DEST_UNREACHABLE:
@@ -138,7 +137,6 @@ uint8_t* create_icmp(struct sr_instance* sr, uint8_t * ip_datagram, int type, in
 				printf("ICMP type not recognized");
 			}
 		}
-
 		return (uint8_t*)icmp_hdr;
 }
 
@@ -157,13 +155,12 @@ void ipDatagramTimeExceeded(struct sr_instance* sr, uint8_t * ip_datagram, unsig
 //BEGIN ICMP TIMEEXCEEDED MODIFICATION
 		//ETHERNET HEADER CHANGES
 //		ethernet_swap_src_dest(sr, packet, interface);
-		//IP HEADER CHANGES
 		ip_hdr = (struct ip*)ip_datagram;
 		temp_icmp_hdr = create_icmp(sr, ip_datagram, ICMP_TIME_EXCEEDED, ICMP_TIMEOUT);
 //END ICMP TIMEEXCEEDED MODIFICATION
 
 	// call sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip);
-	sendIcmpMessage(sr, temp_icmp_hdr, 2*sizeof(struct ip) + ICMP_ERROR_SIZE, ip_hdr->ip_src.s_addr);
+		sendIcmpMessageWithSrcIP(sr, temp_icmp_hdr, 2*sizeof(struct ip) + ICMP_ERROR_SIZE, ip_hdr->ip_src.s_addr, ip_hdr->ip_dst.s_addr);
 	//free the buffer allocated for the icmp message
 	free(temp_icmp_hdr);
 }
@@ -175,7 +172,7 @@ void destinationUnreachable(struct sr_instance* sr, uint8_t * ip_datagram, unsig
 		ip_hdr = (struct ip*)ip_datagram;
 		temp_icmp_hdr = create_icmp(sr, ip_datagram, ICMP_DEST_UNREACHABLE, code);
 		// call sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip);
-		sendIcmpMessage(sr, temp_icmp_hdr, 2*sizeof(struct ip) + ICMP_ERROR_SIZE, ip_hdr->ip_src.s_addr);
+		sendIcmpMessageWithSrcIP(sr, temp_icmp_hdr, 2*sizeof(struct ip) + ICMP_ERROR_SIZE, ip_hdr->ip_src.s_addr, ip_hdr->ip_dst.s_addr);
 		//free the buffer allocated for the icmp message
 		free(temp_icmp_hdr);
 }
