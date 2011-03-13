@@ -236,7 +236,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 
 }
 
-void sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip){
+void sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip, uint32_t src_ip){
 		int ip_size = 2*sizeof(struct ip) + ICMP_ERROR_SIZE;
 		uint8_t* ip_hdr = (uint8_t*)malloc(ip_size);
 		memset(ip_hdr, 0, ip_size);
@@ -247,7 +247,7 @@ void sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int
 		((struct ip*)ip_hdr)->ip_len = htons(ip_size);
 		((struct ip*)ip_hdr)->ip_ttl = ICMP_TTL;
 		((struct ip*)ip_hdr)->ip_p = IP_ICMP;
-		((struct ip*)ip_hdr)->ip_src = sr->routing_table->dest;	//TODO:is this our addr?
+		((struct ip*)ip_hdr)->ip_src.s_addr = src_ip;	//TODO:is this our addr? probably.
 		((struct ip*)ip_hdr)->ip_dst.s_addr = dest_ip;
 		((struct ip*)ip_hdr)->ip_sum = csum((uint16_t*)ip_hdr, sizeof(struct ip));
 		memcpy(ip_hdr+sizeof(struct ip), icmp_message, icmp_msg_len);
