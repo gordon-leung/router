@@ -1,3 +1,3 @@
 #include <stdint.h>
 
-int csum(uint16_t *addr, int count);
+int csum(const uint16_t *addr, int count);

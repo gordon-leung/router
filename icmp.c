@@ -17,7 +17,14 @@ int icmp_reply(struct sr_instance* sr, uint8_t * packet, unsigned int len, char*
 
 //BEGIN ICMP REPLY MODIFICATION
 		//ETHERNET HEADER CHANGES
-		ethernet_swap_src_dest(sr, packet, interface);
+		struct sr_ethernet_hdr* e_hdr = NULL;//init
+		struct sr_if* iface = sr_get_interface(sr, interface); //packet is from which interface?
+		e_hdr = (struct sr_ethernet_hdr*)packet;//cast ethernet header
+		
+		for(int i=0; i<ETHER_ADDR_LEN; i++){
+			e_hdr->ether_dhost[i] = e_hdr->ether_shost[i];
+			e_hdr->ether_shost[i] = iface->addr[i];
+		}
 
 		//IP HEADER CHANGES
 		ip_hdr = (struct ip*)(packet + sizeof(struct sr_ethernet_hdr));//cast ip header
@@ -147,32 +154,12 @@ void ipDatagramTimeExceeded(struct sr_instance* sr, uint8_t * ip_datagram, unsig
 
 		struct ip*    ip_hdr = NULL;
 		uint8_t*			temp_icmp_hdr = NULL;
-//		uint8_t*			icmp_hdr = NULL;
-//		unsigned long temp_addr = 0;
-
 //BEGIN ICMP TIMEEXCEEDED MODIFICATION
 		//ETHERNET HEADER CHANGES
 //		ethernet_swap_src_dest(sr, packet, interface);
-
 		//IP HEADER CHANGES
 		ip_hdr = (struct ip*)ip_datagram;
-/*
-		//set length
-		ip_hdr->ip_len = htons(2*sizeof(struct ip) + ICMP_ERROR_SIZE);
-		//set time-to-live
-		ip_hdr->ip_ttl = ICMP_TTL;
-		//swap source addr with destination addr
-		temp_addr = ip_hdr->ip_src.s_addr;
-		ip_hdr->ip_src.s_addr = ip_hdr->ip_dst.s_addr;
-		ip_hdr->ip_dst.s_addr = temp_addr;
-		//recompute ip checksum
-		ip_hdr->ip_sum = 0;
-		ip_hdr->ip_sum = csum((uint16_t*)ip_hdr, 4*(ip_hdr->ip_hl));
-*/
-		//ICMP HEADER CHANGES
-//		icmp_hdr = (ip_datagram+sizeof(struct ip));
 		temp_icmp_hdr = create_icmp(sr, ip_datagram, ICMP_TIME_EXCEEDED, ICMP_TIMEOUT);
-//		memcpy(icmp_hdr, temp_icmp_hdr,(ntohs(ip_hdr->ip_len) - 4*(ip_hdr->ip_hl)));
 //END ICMP TIMEEXCEEDED MODIFICATION
 
 	// call sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip);

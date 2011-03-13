@@ -92,23 +92,5 @@ void sr_handlepacket(struct sr_instance* sr,
     printf("*** -> Received packet of length %d\n",len);
     handleEthFrame(sr, packet, len, interface);
 
-
 		//testmethod(sr, packet, len, interface); //for debug, learning purposes
-}
-
-/*--------------------------------------------------------------------- 
- * Method: ethernet_swap_src_dest(...)
- *
- * Puts the source mac addr into the destination mac addr
- * And puts the interface mac addr into the source mac addr
- *---------------------------------------------------------------------*/
-void ethernet_swap_src_dest(struct sr_instance* sr, uint8_t * packet, char* interface){
-		struct sr_ethernet_hdr* e_hdr = NULL;//init
-		struct sr_if* iface = sr_get_interface(sr, interface); //packet is from which interface?
-		e_hdr = (struct sr_ethernet_hdr*)packet;//cast ethernet header
-		
-		for(int i=0; i<ETHER_ADDR_LEN; i++){
-			e_hdr->ether_dhost[i] = e_hdr->ether_shost[i];
-			e_hdr->ether_shost[i] = iface->addr[i];
-		}
 }

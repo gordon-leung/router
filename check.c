@@ -3,7 +3,7 @@
 //One's complement checksum for "count" bytes beginning at location "addr"
 //As defined in RFC 1071
 
-int csum(uint16_t *addr, int count){
+int csum(const uint16_t *addr, int count){
 	int sum = 0;
 	uint16_t checksum = 0;
 
