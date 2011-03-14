@@ -186,7 +186,7 @@ static void forward(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_data
 	else{
 		//no matching routing table entry returned.
 		//the destination subnet is not reachable.
-		//destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_NET_UNREACHABLE);
+		destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_NET_UNREACHABLE);
 	}
 
 }
@@ -249,7 +249,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 			//bad news, the next hop is unreachable. call icmp to handle
 			//this ip datagram, as well as all the ones buffered waiting
 			//to be delivered to the same next hop.
-			//destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_NET_UNREACHABLE);
+			destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_NET_UNREACHABLE);
 			handleUndeliverableBufferedIPDatagram(sr, next_hop_ip, iface);
 			break;
 		}

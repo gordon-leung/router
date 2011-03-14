@@ -101,7 +101,7 @@ void handleUndeliverableBufferedIPDatagram(struct sr_instance* sr, uint32_t ip, 
 			//only send icmp message about a ip datagram if its payload
 			//is not an icmp message because we should not send icmp message
 			//about another icmp message
-			//destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_NET_UNREACHABLE);
+			destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_NET_UNREACHABLE);
 		}
 
 		free(ip_datagram);
