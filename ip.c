@@ -11,6 +11,8 @@
 #include "sr_if.h"
 
 
+//static void printIPDatagram(struct ip* ip_hdr, uint8_t* ip_datagram, unsigned int ip_datagram_len);
+
 /*Lookup the routing table and try to find and entry with the subnet
  * that has the longest prefix match against the destination ip addr
  *@param the router instance
@@ -73,28 +75,34 @@ static void setupIPHeaderForICMP(struct ip* ip_hdr, uint16_t ip_datagram_total_l
 
 
 void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_datagram, unsigned int ip_datagram_len){
-	/*TODO: this is the entry point into the ip layer. This method
+
+	/*this is the entry point into the ip layer. This method
 	 * will be called by the ethernet layer when it received an ip
 	 * datagram that is targeted for this router.
 	 *
 	 * A few things to do here:
-	 * 	1. run the ip hdr through the check sum code to make sure
-	 * 		the check sum is correct.
-	 * 		1.1 if the check sum is not correct, the datagram should
-	 * 			not be forwarded and instead the it should be passed
-	 * 			up to the icmp layer to generate an icmp message to
-	 * 			be snet back to the source host
+	 * 	1. Check to see if this router can handle this ip datagram by
+	 * 		checking ip datagram's header:
+	 * 			1.1 see if the checksum is correct
+	 * 			1.2 see if it is ipv4
+	 * 			1.3 make sure there is no options fields set
+	 * 			1.4 make sure the size ip datagram size is at
+	 * 				least as big as the header
+	 * 		If this check fail then the ip datagram is dropped
 	 *
-	 * 2. if the check sum is fine then look up the forwarding table
-	 * 		to find out the next hop for the datagram
-	 * 		2.1 if ip datagram is destined for this router then figure
-	 * 			out what to do with it:
-	 * 			2.1.1 if it is an icmp message then pass it put to the
-	 * 				icmp layer
-	 * 			2.1.2 if it is anything else then also pass the datagram
-	 * 				to the icmp layer and tell it to generate an icmp
-	 * 				message back to the source host for destination
-	 * 				protocol unreachable (not sure aobut this, double check)
+	 *	2. Check to see if the ip datagram is destined for this router
+	 *		2.1 if it is then try to handle it:
+	 *			2.1.1 if the ip datagram encapsulates an icmp message
+	 *					then call icmp and it the ip datagram for handling
+	 *			2.1.2 if the ip datagram encapsulate packets
+	 *					for protocol other than icmp then call icmp
+	 *					to handle the dest protocol unreacable situation
+	 *
+	 *	3. If the ip datagram is not destined for this router
+	 *		3.1 see if the ttl is > 0
+	 *			3.1.1 if yes then try to forward it
+	 *			3.1.2 if no then call icmp to handle the time exceeded
+	 *					situcation for the ip datagram
 	 *
 	 */
 
@@ -110,7 +118,7 @@ void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_da
 	if(ipDatagramDestinedForMe(sr, ip_hdr->ip_dst.s_addr)){
 		processIPDatagramDestinedForMe(sr, eth_frame, ip_datagram, ip_datagram_len);
 	}
-	else if(ip_hdr->ip_ttl > 0){
+	else if(ip_hdr->ip_ttl > 1){
 		//ttl greater than 0, we can try to forward it
 		//even if ttl is now 1 we can still forward it
 		//because the next hop maybe the destination!!
@@ -119,8 +127,7 @@ void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_da
 	else{
 		//ip datagram is not destined for me and
 		//ttl has expired, so can't be forwarded
-		//TODO: call icmp to send an icmp message back
-		//to sending host saying time exceeded
+		ipDatagramTimeExceeded(sr, ip_datagram, ip_datagram_len);
 	}
 
 }
@@ -130,7 +137,9 @@ static void processIPDatagramDestinedForMe(struct sr_instance* sr, uint8_t* eth_
 	struct ip* ip_hdr = (struct ip*)ip_datagram;
 
 	if(ip_hdr->ip_p == IPPROTO_ICMP){
-		//TODO: call icmp to handle the icmp message received
+
+		handleIcmpMessageReceived(sr, ip_datagram, ip_datagram_len);
+		/*
 		printf("IP packet is of type ICMP!\n");
 		struct icmphdr* icmp_hdr = (struct icmphdr*)(ip_datagram+sizeof(struct ip));
 		if(icmp_hdr->icmp_type == ICMP_REQUEST){
@@ -138,13 +147,12 @@ static void processIPDatagramDestinedForMe(struct sr_instance* sr, uint8_t* eth_
 			if(icmp_reply(sr, eth_frame, ip_datagram_len + 14, "eth0") == 0){
 				printf("Sent ICMP REPLY!\n");
 			}
-		}
+		}*/
 	}
 	else{
 		//This router can't handle any transport layer segment
 		//destined for it other than icmp
-		//TODO: call icmp to send a message back to sending host
-		//saying that dest protocol not reachable.
+		destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_PROTOCOL_UNREACHABLE);
 	}
 
 }
@@ -177,8 +185,8 @@ static void forward(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_data
 	}
 	else{
 		//no matching routing table entry returned.
-		//unable to forward this packet
-		//TODO send an icmp message back to sending host.
+		//the destination subnet is not reachable.
+		//destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_NET_UNREACHABLE);
 	}
 
 }
@@ -220,6 +228,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 	switch(resolveStatus){
 		case(ARP_RESOLVE_SUCCESS):
 		{
+			//printIPDatagram((struct ip*)ip_datagram, ip_datagram, ip_datagram_len);
 			if(eth_frame){
 				//the ip datagram is already encapsulated in a eth frame
 				sendEthFrameContainingIPDatagram(sr, mac, eth_frame, iface, ip_datagram_len);
@@ -240,8 +249,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 			//bad news, the next hop is unreachable. call icmp to handle
 			//this ip datagram, as well as all the ones buffered waiting
 			//to be delivered to the same next hop.
-			//TODO: call icmp to send an icmp message back to the sender of
-			//this ip datagram
+			//destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_NET_UNREACHABLE);
 			handleUndeliverableBufferedIPDatagram(sr, next_hop_ip, iface);
 			break;
 		}
@@ -254,7 +262,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 
 void sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip){
 
-	assert(icmp_msg_len >= MIN_ICMP_MSG_LEN);
+	assert(icmp_msg_len >= ICMP_HDR_LEN);
 	assert(icmp_message);
 	assert(sr);
 	assert(dest_ip);
@@ -269,30 +277,11 @@ void sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int
 	assert(iface);
 	sendIcmpMessageWithSrcIP(sr, icmp_message, icmp_msg_len, dest_ip, iface->ip);
 
-	/*int ip_size = 2*sizeof(struct ip) + ICMP_ERROR_SIZE;
-		uint8_t* ip_hdr = (uint8_t*)malloc(ip_size);
-		memset(ip_hdr, 0, ip_size);
-
-		//SET IP FIELDS
-		((struct ip*)ip_hdr)->ip_v = 4;
-		((struct ip*)ip_hdr)->ip_hl = 5;
-		((struct ip*)ip_hdr)->ip_len = htons(ip_size);
-		((struct ip*)ip_hdr)->ip_ttl = ICMP_TTL;
-		((struct ip*)ip_hdr)->ip_p = IP_ICMP;
-		((struct ip*)ip_hdr)->ip_src.s_addr = src_ip;	//TODO:is this our addr? probably.
-		((struct ip*)ip_hdr)->ip_dst.s_addr = dest_ip;
-		((struct ip*)ip_hdr)->ip_sum = csum((uint16_t*)ip_hdr, sizeof(struct ip));
-		memcpy(ip_hdr+sizeof(struct ip), icmp_message, icmp_msg_len);
-
-		//TODO:check all values in IP datagram
-		//TODO:ready to send ip datagram to ethernet now
-
-		free(ip_hdr);*/
 }
 
 void sendIcmpMessageWithSrcIP(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip, uint32_t src_ip){
 
-	assert(icmp_msg_len >= MIN_ICMP_MSG_LEN);
+	assert(icmp_msg_len >= ICMP_HDR_LEN);
 	assert(icmp_message);
 	assert(sr);
 	assert(src_ip);
@@ -351,7 +340,7 @@ static void ip_dec_ttl(struct ip* ip_hdr){
 
 	//even if ttl is now 1 we can still forward it
 	//because the next hop maybe the destination!!
-	assert(ip_hdr->ip_ttl > 0);
+	assert(ip_hdr->ip_ttl > 1);
 
 	ip_hdr->ip_ttl--;
 	ip_hdr->ip_sum = 0; //clear checksum
@@ -364,7 +353,7 @@ static int ipDatagramShouldBeDropped(struct ip ip_hdr){
 	if(ntohs(ip_hdr.ip_len) < 20){//datagram too short.
 		return TRUE;
 	}
-	if(ip_hdr.ip_v != 4){//not IP_V4
+	if(ip_hdr.ip_v != IPV4_VERSION){//not IP_V4
 		return TRUE;
 	}
 	if(ip_hdr.ip_hl > 5){//datagram has options set, drop it
@@ -379,3 +368,43 @@ static int ipDatagramShouldBeDropped(struct ip ip_hdr){
 
 	return FALSE;
 }
+
+/*static void printIPDatagram(struct ip* ip_hdr, uint8_t* ip_datagram, unsigned int ip_datagram_len){
+	printf("**********************************\n");
+	printf("IP header:\n");
+	printf("IP version: %d\n",ip_hdr->ip_v);
+	printf("IP header length: %d\n", ip_hdr->ip_hl);
+	printf("TOS: %d\n", ip_hdr->ip_tos);
+	printf("Total length: %d\n", ntohs(ip_hdr->ip_len));
+	printf("Frag ID: %d\n", ntohs(ip_hdr->ip_id));
+	printf("Frag Offset: %x\n", ntohs(ip_hdr->ip_off));
+	printf("TTL: %d\n", ip_hdr->ip_ttl);
+	printf("Protocol: %d\n", ip_hdr->ip_p);
+	printf("Checksum: %d\n", ip_hdr->ip_sum);
+	char dotted_ip[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &(ip_hdr->ip_src), dotted_ip, INET_ADDRSTRLEN);
+	printf("Source IP: %s\n", dotted_ip);
+	inet_ntop(AF_INET, &(ip_hdr->ip_dst), dotted_ip, INET_ADDRSTRLEN);
+	printf("Destination IP: %s\n", dotted_ip);
+	printf("Data:\n");
+	uint8_t* ip_data = (uint8_t*)(ip_datagram + sizeof(struct ip));
+	unsigned int byte_index = 0;
+	unsigned int data_size = ip_datagram_len - sizeof(struct ip);
+	while(byte_index < data_size){
+		if(byte_index == 0){
+		}
+		else if((byte_index % 8) == 0){
+			printf("\n");
+		}
+		else if((byte_index % 4) == 0){
+			printf("\t");
+		}
+		else{
+			printf(" ");
+		}
+		printf("%*x", 2, *(uint8_t*)(ip_data + byte_index));
+		byte_index++;
+	}
+	printf("\n");
+	printf("**********************************\n");
+}*/

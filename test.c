@@ -77,7 +77,7 @@ void testSendArpRequest(struct sr_instance* sr){
 }
 
 void testSendIcmpMsg(struct sr_instance* sr){
-	uint8_t icmp_msg_len = MIN_ICMP_MSG_LEN;
+	uint8_t icmp_msg_len = ICMP_HDR_LEN;
 	uint8_t* icmp_msg = (uint8_t*)malloc(icmp_msg_len);
 	assert(icmp_msg);
 

@@ -1,7 +1,44 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+
 #include "icmp.h"
 #include "ip.h"
+
+/*Checks to see if the icmp checksum of the icmp received
+ * is correct
+ * @param icmp_hdr the header of the icmp message
+ * @param icmp_msg the icmp message recieved
+ * @param icmp_msg_len the size of the icmp message in bytes
+ * @return 1 if no error is detected, 0 otherwise
+ */
+static int checksumCorrect(struct icmphdr* icmp_hdr, uint16_t* icmp_msg, unsigned int icmp_msg_len);
+
+/*Calculate the size, in bytes,  of the icmpp message to be constructed
+ * for the ip datagram causing the icmp message to be constructed
+ * @param ip_datagram_len the size, in bytes, of the ip datagram
+ * 		causing the icmp message to be constructed
+ * @return the size in bytes of the icmp message to be constructed
+ * 		for the ip datagram
+ */
+static unsigned int calculateIcmpMsgLen(unsigned int ip_datagram_len);
+
+/*Copy the header and at most 64 bits of the ip datagrame data into
+ * the icmp message following immediately after the header
+ * @param icmp_msg the icmp_msg
+ * @param ip_datagram the ip datagram
+ * @param icmp_msg_len the size of the icmp message in bytes
+ */
+static void copyIPHeaderAndDataToIcmpMsg(uint8_t* icmp_msg, uint8_t * ip_datagram, unsigned int icmp_msg_len);
+
+/*Setup the header of the icmp message and calcualte the checksum
+ * @param icmp_msg the icmp_msg whose header we want to setup
+ * @param icmp_msg_len the size of the icmp message in bytes
+ * @param type the value of the type field of the icmp message
+ * @param code the value for the code field of the icmp message
+ */
+static void setupIcmpHeader(uint8_t* icmp_msg, unsigned int icmp_msg_len, uint8_t type, uint8_t code);
+
 
 /*--------------------------------------------------------------------- 
  * Method: icmp_reply(...)
@@ -75,6 +112,7 @@ END TEST CODE*/
 		return sr_send_packet(sr, packet, len, interface);
 }
 
+
 uint8_t* create_icmp(struct sr_instance* sr, uint8_t * ip_datagram, int type, int code){
 		struct ip* ip_hdr = (struct ip*)ip_datagram; //cast ip header
 		struct icmphdr* icmp_hdr = NULL;
@@ -142,7 +180,7 @@ uint8_t* create_icmp(struct sr_instance* sr, uint8_t * ip_datagram, int type, in
 
 void ipDatagramTimeExceeded(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len){
 
-	//icmp fields to be set:
+/*	//icmp fields to be set:
 	//type = 11
 	//code = 0
 
@@ -160,62 +198,152 @@ void ipDatagramTimeExceeded(struct sr_instance* sr, uint8_t * ip_datagram, unsig
 //END ICMP TIMEEXCEEDED MODIFICATION
 
 	// call sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip);
-		sendIcmpMessageWithSrcIP(sr, temp_icmp_hdr, 2*sizeof(struct ip) + ICMP_ERROR_SIZE, ip_hdr->ip_src.s_addr, ip_hdr->ip_dst.s_addr);
+		sendIcmpMessage(sr, temp_icmp_hdr, 2*sizeof(struct ip) + ICMP_ERROR_SIZE, ip_hdr->ip_src.s_addr);
 	//free the buffer allocated for the icmp message
 	free(temp_icmp_hdr);
+*/
+	unsigned int icmp_msg_len = calculateIcmpMsgLen(ip_datagram_len);
+	uint8_t* icmp_msg = (uint8_t*) malloc(icmp_msg_len);
+	bzero(icmp_msg, icmp_msg_len);
+
+	copyIPHeaderAndDataToIcmpMsg(icmp_msg, ip_datagram, icmp_msg_len);
+
+	//setup icmp header, includes calculating checksum
+	setupIcmpHeader(icmp_msg, icmp_msg_len, ICMP_TYPE_TIME_EXCEEDED, ICMP_CODE_TTL_EXCEEDED);
+
+	//the source ip of the original ip datagram becomes the destination
+	//ip of this icmp message
+	uint32_t dest_ip = ((struct ip*)ip_datagram)->ip_src.s_addr;
+
+	sendIcmpMessage(sr, icmp_msg, icmp_msg_len, dest_ip);
+
+	if(icmp_msg){
+		free(icmp_msg);
+	}
 }
 
 void destinationUnreachable(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len, unsigned short code){
-
+		/*
 		struct ip*    ip_hdr = NULL;
 		uint8_t*			temp_icmp_hdr = NULL;
 		ip_hdr = (struct ip*)ip_datagram;
 		temp_icmp_hdr = create_icmp(sr, ip_datagram, ICMP_DEST_UNREACHABLE, code);
 		// call sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip);
-		sendIcmpMessageWithSrcIP(sr, temp_icmp_hdr, 2*sizeof(struct ip) + ICMP_ERROR_SIZE, ip_hdr->ip_src.s_addr, ip_hdr->ip_dst.s_addr);
+		sendIcmpMessage(sr, temp_icmp_hdr, 2*sizeof(struct ip) + ICMP_ERROR_SIZE, ip_hdr->ip_src.s_addr);
 		//free the buffer allocated for the icmp message
 		free(temp_icmp_hdr);
+		*/
+
+	assert(sr);
+	assert(ip_datagram);
+	assert( (code == ICMP_CODE_NET_UNREACHABLE)
+			|| (code == ICMP_CODE_HOST_UNREACHABLE)
+			|| (code == ICMP_CODE_PROTOCOL_UNREACHABLE)
+			|| (code == ICMP_CODE_PORT_UNREACHABLE));
+
+	unsigned int icmp_msg_len = calculateIcmpMsgLen(ip_datagram_len);
+	uint8_t* icmp_msg = (uint8_t*) malloc(icmp_msg_len);
+	bzero(icmp_msg, icmp_msg_len);
+
+	copyIPHeaderAndDataToIcmpMsg(icmp_msg, ip_datagram, icmp_msg_len);
+
+	//setup icmp header, includes calculating checksum
+	setupIcmpHeader(icmp_msg, icmp_msg_len, ICMP_TYPE_DESTINATION_UNREACHABLE, code);
+
+	//the source ip of the original ip datagram becomes the destination
+	//ip of this icmp message
+	uint32_t dest_ip = ((struct ip*)ip_datagram)->ip_src.s_addr;
+
+	sendIcmpMessage(sr, icmp_msg, icmp_msg_len, dest_ip);
+
+	if(icmp_msg){
+		free(icmp_msg);
+	}
 }
 
-//TODO: Is this method even necessary?
-void parameterProblem(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len, unsigned short code, uint8_t pointer){
+static void setupIcmpHeader(uint8_t* icmp_msg, unsigned int icmp_msg_len, uint8_t type, uint8_t code){
 
-	//icmp fields to be set:
-	//type = 12
-	//code = the code param passed in
-	//pointer = the pointer arg passed in
+	struct icmphdr* icmp_hdr = (struct icmphdr*)icmp_msg;
 
-	//dest_ip = the ip_datagram's sender's ip addr
+	icmp_hdr->icmp_type = type;
+	icmp_hdr->icmp_code = code;
 
-	//refer to ipDatagramTimeExceeded(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len)
-	//to see what to do next;
+	icmp_hdr->icmp_checksum = 0;
+	icmp_hdr->icmp_checksum = (uint16_t)csum((uint16_t*)icmp_msg, icmp_msg_len);
+}
+
+static unsigned int calculateIcmpMsgLen(unsigned int ip_datagram_len){
+
+	unsigned int icmp_msg_len = ICMP_HDR_LEN;
+
+	if( (ip_datagram_len - sizeof(struct ip)) >= MAX_IP_DATA_LEN){
+		icmp_msg_len += (sizeof(struct ip) + MAX_IP_DATA_LEN);
+	}
+	else{
+		icmp_msg_len += ip_datagram_len;
+	}
+
+	return icmp_msg_len;
+}
+
+static void copyIPHeaderAndDataToIcmpMsg(uint8_t* icmp_msg, uint8_t * ip_datagram, unsigned int icmp_msg_len){
+	memcpy((uint8_t*)(icmp_msg+ICMP_HDR_LEN), ip_datagram, icmp_msg_len - ICMP_HDR_LEN);
 }
 
 void handleIcmpMessageReceived(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len){
 
-	//do check sum
-	//if check sum failed then just drop it and return, nothing more to do here
+	assert(sr);
+	assert(ip_datagram);
 
-	//for the icmp message encapsulated in this ip_datagram, make sure the type is 8
-	//for echo request. we only handle echo request icmp, aka ping, message and for
-	//any other types of icmp message we simply drop it and return
+	if(ip_datagram_len < (sizeof(struct ip) + ICMP_HDR_LEN)){
+		//the ip datagram is too small to be to have a valid header
+		//and coontain a valid icmp message. can't process it, return
+		return;
+	}
 
-	//icmp fields to be set
-	//type = 0
-	//code = 0
+	uint8_t* icmp_msg = ip_datagram + sizeof(struct ip);
+	struct icmphdr* icmp_hdr = (struct icmphdr*)icmp_msg;
+	unsigned int icmp_msg_len = ip_datagram_len - sizeof(struct ip);
 
-	//dest_ip = the ip_datagram's sender's ip addr
+	if(!checksumCorrect(icmp_hdr, (uint16_t*)icmp_msg, icmp_msg_len)){
+		//the calculated checksum is not the same as the checksum
+		//in the icmp message, drop it
+		return;
+	}
 
-	//here we don't need to construct a new icmp message, just reuse the one in the
-	//ip_datagram. u have to calculate base on the ip datagram header size to see
-	//where the icmp message begins
+	if(icmp_hdr->icmp_type != ICMP_TYPE_ECHO_REQUEST){
+		//the icmp message we received is not a echo
+		//request, this router currently can only handle
+		//icmp echo request. We just return and drop the
+		//ip datagram
+		return;
+	}
 
-	//fill in the type field, the code field and leave the rest the same
+	//the ip of the source of the icmp echo request become the
+	//ip of the destination of the ip datagram used for sending
+	//this icmp echo reply and the ip of the destination of the
+	//echo request becomes the ip of the source for the ip
+	//datagram used to send this icmp echo reply
+	struct ip* ip_hdr = (struct ip*) ip_datagram;
+	uint32_t dest_ip = ip_hdr->ip_src.s_addr;
+	uint32_t src_ip = ip_hdr->ip_dst.s_addr;
 
-	//recalculate checksum
+	//setting up the icmp header for the echo reply
+	icmp_hdr->icmp_type = ICMP_TYPE_ECHO_REPLY;
+	icmp_hdr->icmp_checksum = 0;
+	icmp_hdr->icmp_checksum = (uint16_t)csum((uint16_t*)icmp_msg, icmp_msg_len);
 
-	// call sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip);
+	sendIcmpMessageWithSrcIP(sr, icmp_msg, icmp_msg_len, dest_ip, src_ip);
+}
 
-	//note: no need to free any buffer here since we didn't allocate any in this
-	//function
+static int checksumCorrect(struct icmphdr* icmp_hdr, uint16_t* icmp_msg, unsigned int icmp_msg_len){
+
+	uint16_t checksum = icmp_hdr->icmp_checksum;
+	icmp_hdr->icmp_checksum = 0;
+	uint16_t calculated_checksum = csum(icmp_msg, icmp_msg_len);
+
+	//lets try not to change the content of the icmp message
+	icmp_hdr->icmp_checksum = checksum;
+
+	return checksum == calculated_checksum;
 }

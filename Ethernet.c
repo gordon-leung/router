@@ -57,8 +57,8 @@ void handleEthFrame(struct sr_instance* sr, uint8_t * eth_frame, unsigned int le
 	assert(interface);
 
 	//testSendArpRequest(sr);
-	//printf("\nnum of datagram buffers (before): %d\n", sr->num_of_datagram_buffers);
-	//printf("\nnum datagram buffered (before): %d\n", sr->num_datagrams_buffed);
+	//printf("num of datagram buffers (before): %d\n", sr->num_of_datagram_buffers);
+	//printf("num datagram buffered (before): %d\n", sr->num_datagrams_buffed);
 
 	struct sr_ethernet_hdr* eth_hdr = (struct sr_ethernet_hdr*)eth_frame;//cast ethernet header
 	struct sr_if* iface = sr_get_interface(sr, interface); //the interface where the frame is received
@@ -105,8 +105,8 @@ void handleEthFrame(struct sr_instance* sr, uint8_t * eth_frame, unsigned int le
 		}
 	}
 
-	//printf("\nnum of datagram buffers (after): %d\n", sr->num_of_datagram_buffers);
-	//printf("\nnum datagram buffered (after): %d\n", sr->num_datagrams_buffed);
+	//printf("num of datagram buffers (after): %d\n", sr->num_of_datagram_buffers);
+	//printf("num datagram buffered (after): %d\n\n", sr->num_datagrams_buffed);
 
 }
 
@@ -169,6 +169,7 @@ static void sendEthFrame(struct sr_instance* sr, uint8_t* dest_mac, uint8_t * et
 	MACcpy(eth_hdr->ether_dhost, dest_mac);
 	MACcpy(eth_hdr->ether_shost, iface->addr);
 
+	//printf("Sending from: %s\n", iface->name);
 	//printPacketHeader(eth_hdr);
 
 	unsigned int frame_len = sizeof(struct sr_ethernet_hdr) + payload_len;
@@ -218,7 +219,6 @@ static int isFrameForMe(struct sr_instance* sr, struct sr_ethernet_hdr* eth_hdr,
 }
 
 /*static void printPacketHeader(struct sr_ethernet_hdr* eth_hdr){
-	printf("\n");
 	printf("eth frame header: \n");
 
 	printf("DEST_ETH_ADDR: ");

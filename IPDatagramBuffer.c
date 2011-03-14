@@ -13,6 +13,7 @@
 #include "sr_if.h"
 #include "Ethernet.h"
 #include "sr_protocol.h"
+#include "icmp.h"
 
 
 /*Try to find a buffer that matches the ip and interface
@@ -100,9 +101,7 @@ void handleUndeliverableBufferedIPDatagram(struct sr_instance* sr, uint32_t ip, 
 			//only send icmp message about a ip datagram if its payload
 			//is not an icmp message because we should not send icmp message
 			//about another icmp message
-
-			//TODO:call icmp to send a message back to the sender of the ip
-			//datagram
+			//destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_NET_UNREACHABLE);
 		}
 
 		free(ip_datagram);
