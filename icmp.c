@@ -39,6 +39,13 @@ static void copyIPHeaderAndDataToIcmpMsg(uint8_t* icmp_msg, uint8_t * ip_datagra
  */
 static void setupIcmpHeader(uint8_t* icmp_msg, unsigned int icmp_msg_len, uint8_t type, uint8_t code);
 
+/*Checks to see if the ip datagram contains an icmp message
+ * @param ip_datagram the ip datagram to be checked
+ * @return 1 if the ip datagram contains an icmp message
+ * 		0 otherwise
+ */
+static int ipDatagramContainsIcmpMsg(uint8_t* ip_datagram);
+
 
 /*--------------------------------------------------------------------- 
  * Method: icmp_reply(...)
@@ -202,6 +209,14 @@ void ipDatagramTimeExceeded(struct sr_instance* sr, uint8_t * ip_datagram, unsig
 	//free the buffer allocated for the icmp message
 	free(temp_icmp_hdr);
 */
+	if(ipDatagramContainsIcmpMsg(ip_datagram)){
+		//the ip datagram that cause triggers this icmp message
+		//to be generated encapsulates another icmp message
+		//we are not sending an icmp message about another
+		//icmp message.
+		return;
+	}
+
 	unsigned int icmp_msg_len = calculateIcmpMsgLen(ip_datagram_len);
 	uint8_t* icmp_msg = (uint8_t*) malloc(icmp_msg_len);
 	bzero(icmp_msg, icmp_msg_len);
@@ -234,6 +249,14 @@ void destinationUnreachable(struct sr_instance* sr, uint8_t * ip_datagram, unsig
 		free(temp_icmp_hdr);
 		*/
 
+	if(ipDatagramContainsIcmpMsg(ip_datagram)){
+		//the ip datagram that cause triggers this icmp message
+		//to be generated encapsulates another icmp message
+		//we are not sending an icmp message about another
+		//icmp message.
+		return;
+	}
+
 	assert(sr);
 	assert(ip_datagram);
 	assert( (code == ICMP_CODE_NET_UNREACHABLE)
@@ -254,7 +277,17 @@ void destinationUnreachable(struct sr_instance* sr, uint8_t * ip_datagram, unsig
 	//ip of this icmp message
 	uint32_t dest_ip = ((struct ip*)ip_datagram)->ip_src.s_addr;
 
-	sendIcmpMessage(sr, icmp_msg, icmp_msg_len, dest_ip);
+	if((code == ICMP_CODE_PROTOCOL_UNREACHABLE) || (code == ICMP_CODE_PORT_UNREACHABLE)){
+		//in this case this router is the destination of the
+		//original ip datagram so the source ip for this icmp message
+		//should be the same as the destination ip of the original
+		//ip datagram
+		uint32_t src_ip = ((struct ip*)ip_datagram)->ip_dst.s_addr;
+		sendIcmpMessageWithSrcIP(sr, icmp_msg, icmp_msg_len, dest_ip, src_ip);
+	}
+	else{
+		sendIcmpMessage(sr, icmp_msg, icmp_msg_len, dest_ip);
+	}
 
 	if(icmp_msg){
 		free(icmp_msg);
@@ -284,6 +317,10 @@ static unsigned int calculateIcmpMsgLen(unsigned int ip_datagram_len){
 	}
 
 	return icmp_msg_len;
+}
+
+static int ipDatagramContainsIcmpMsg(uint8_t* ip_datagram){
+	return (((struct ip*)(ip_datagram))->ip_p == IPPROTO_ICMP);
 }
 
 static void copyIPHeaderAndDataToIcmpMsg(uint8_t* icmp_msg, uint8_t * ip_datagram, unsigned int icmp_msg_len){

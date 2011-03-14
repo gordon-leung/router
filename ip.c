@@ -137,17 +137,15 @@ static void processIPDatagramDestinedForMe(struct sr_instance* sr, uint8_t* eth_
 	struct ip* ip_hdr = (struct ip*)ip_datagram;
 
 	if(ip_hdr->ip_p == IPPROTO_ICMP){
-
+		//the ip datagram contains an icmp message
+		//call the icmp component to handle it
 		handleIcmpMessageReceived(sr, ip_datagram, ip_datagram_len);
-		/*
-		printf("IP packet is of type ICMP!\n");
-		struct icmphdr* icmp_hdr = (struct icmphdr*)(ip_datagram+sizeof(struct ip));
-		if(icmp_hdr->icmp_type == ICMP_REQUEST){
-			printf("Got ICMP REQUEST!\n");
-			if(icmp_reply(sr, eth_frame, ip_datagram_len + 14, "eth0") == 0){
-				printf("Sent ICMP REPLY!\n");
-			}
-		}*/
+
+	}
+	else if(ip_hdr->ip_p == IPPROTO_UDP){
+		//for ping to work properly we need to use this even
+		//though the router is not running UDP
+		destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_PORT_UNREACHABLE);
 	}
 	else{
 		//This router can't handle any transport layer segment
