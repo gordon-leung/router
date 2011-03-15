@@ -73,19 +73,6 @@ static void ip_dec_ttl(struct ip* ip_hdr);
  */
 static void setupIPHeaderForICMP(struct ip* ip_hdr, uint16_t ip_datagram_total_len, uint32_t src_ip, uint32_t dest_ip);
 
-/*Sometime the ip datagram size given by the stub code is
- * in consistent with what the ip datagram's total length
- * field says. When the one given by stub code is larger
- * than what the total length field says the extra bytes
- * after the ip datagram are padded with 0's. So this
- * method returns the smaller of the two numbers
- * @param ip_hdr the ip datagram's header
- * @param ip_datagram_len the size of the ip datagram give
- * 		by the stub code
- * @return the smaller of the two numbers
- */
-static unsigned int adjustIPDatagramLen(struct ip* ip_hdr, unsigned int ip_datagram_len);
-
 
 void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_datagram, unsigned int ip_datagram_len){
 
@@ -122,11 +109,6 @@ void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_da
 	struct ip* ip_hdr = (struct ip*)ip_datagram;
 
 	//printIPDatagram(ip_hdr, ip_datagram, ip_datagram_len, "Received IP datagram:");
-
-	//vns sometimes give us the wrong size, we want to
-	//compare this size with the total length field in
-	//the ip datagram and use the smaller of the two
-	ip_datagram_len = adjustIPDatagramLen(ip_hdr, ip_datagram_len);
 
 	if(ipDatagramShouldBeDropped(*ip_hdr)){
 		//the check sum check didn't pass or the ip
@@ -390,16 +372,6 @@ static int ipDatagramShouldBeDropped(struct ip ip_hdr){
 	}
 
 	return FALSE;
-}
-
-static unsigned int adjustIPDatagramLen(struct ip* ip_hdr, unsigned int ip_datagram_len){
-
-	if(ntohs(ip_hdr->ip_len) < ip_datagram_len){
-		//vns u bastard!
-		ip_datagram_len = ntohs(ip_hdr->ip_len);
-	}
-
-	return ip_datagram_len;
 }
 
 /*static void printIPDatagram(struct ip* ip_hdr, uint8_t* ip_datagram, unsigned int ip_datagram_len, char* title){
