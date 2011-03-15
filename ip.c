@@ -373,6 +373,9 @@ static int ipDatagramShouldBeDropped(struct ip ip_hdr){
 	if(ntohs(ip_hdr.ip_len) < 20){//datagram too short.
 		return TRUE;
 	}
+	if(ntohs(ip_hdr.ip_len) > 1500){//datagram too long.
+		return TRUE;
+	}
 	if(ip_hdr.ip_v != IPV4_VERSION){//not IP_V4
 		return TRUE;
 	}
