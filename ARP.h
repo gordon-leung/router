@@ -16,7 +16,7 @@
 //the time to wait before the next arp
 //request for the same ip can be sent
 //again. measure in seconds
-#define ARP_REQUEST_WAIT_TIME 0.01
+#define ARP_REQUEST_WAIT_TIME 0.1
 
 //the max number of arp requests that
 //can be sent for the same ip

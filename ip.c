@@ -11,7 +11,7 @@
 #include "sr_if.h"
 
 
-//static void printIPDatagram(struct ip* ip_hdr, uint8_t* ip_datagram, unsigned int ip_datagram_len);
+//static void printIPDatagram(struct ip* ip_hdr, uint8_t* ip_datagram, unsigned int ip_datagram_len, char* title);
 
 /*Lookup the routing table and try to find and entry with the subnet
  * that has the longest prefix match against the destination ip addr
@@ -73,6 +73,19 @@ static void ip_dec_ttl(struct ip* ip_hdr);
  */
 static void setupIPHeaderForICMP(struct ip* ip_hdr, uint16_t ip_datagram_total_len, uint32_t src_ip, uint32_t dest_ip);
 
+/*Sometime the ip datagram size given by the stub code is
+ * in consistent with what the ip datagram's total length
+ * field says. When the one given by stub code is larger
+ * than what the total length field says the extra bytes
+ * after the ip datagram are padded with 0's. So this
+ * method returns the smaller of the two numbers
+ * @param ip_hdr the ip datagram's header
+ * @param ip_datagram_len the size of the ip datagram give
+ * 		by the stub code
+ * @return the smaller of the two numbers
+ */
+static unsigned int adjustIPDatagramLen(struct ip* ip_hdr, unsigned int ip_datagram_len);
+
 
 void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_datagram, unsigned int ip_datagram_len){
 
@@ -108,6 +121,13 @@ void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_da
 
 	struct ip* ip_hdr = (struct ip*)ip_datagram;
 
+	//printIPDatagram(ip_hdr, ip_datagram, ip_datagram_len, "Received IP datagram:");
+
+	//vns sometimes give us the wrong size, we want to
+	//compare this size with the total length field in
+	//the ip datagram and use the smaller of the two
+	ip_datagram_len = adjustIPDatagramLen(ip_hdr, ip_datagram_len);
+
 	if(ipDatagramShouldBeDropped(*ip_hdr)){
 		//the check sum check didn't pass or the ip
 		//datagram is of the type that can't be handled
@@ -142,9 +162,9 @@ static void processIPDatagramDestinedForMe(struct sr_instance* sr, uint8_t* eth_
 		handleIcmpMessageReceived(sr, ip_datagram, ip_datagram_len);
 
 	}
-	else if(ip_hdr->ip_p == IPPROTO_UDP){
+	else if( (ip_hdr->ip_p == IPPROTO_UDP) || (ip_hdr->ip_p == IPPROTO_TCP) ){
 		//for ping to work properly we need to use this even
-		//though the router is not running UDP
+		//though the router is not running UDP or TCP
 		destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_PORT_UNREACHABLE);
 	}
 	else{
@@ -193,6 +213,8 @@ static struct sr_rt* lookupRoutingTable(struct sr_instance* sr, uint32_t dest_ho
 
 	struct sr_rt* current_rt_entry = sr->routing_table;
 
+	//this variable stores the current longest ip prefix
+	//matching the dest_host_ip
 	uint32_t longest_prefix = 0;
 	struct sr_rt* rt_entry_with_longest_prefix = NULL;
 
@@ -226,7 +248,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 	switch(resolveStatus){
 		case(ARP_RESOLVE_SUCCESS):
 		{
-			//printIPDatagram((struct ip*)ip_datagram, ip_datagram, ip_datagram_len);
+			//printIPDatagram((struct ip*)ip_datagram, ip_datagram, ip_datagram_len, "Sending IP datagram:");
 			if(eth_frame){
 				//the ip datagram is already encapsulated in a eth frame
 				sendEthFrameContainingIPDatagram(sr, mac, eth_frame, iface, ip_datagram_len);
@@ -367,8 +389,24 @@ static int ipDatagramShouldBeDropped(struct ip ip_hdr){
 	return FALSE;
 }
 
-/*static void printIPDatagram(struct ip* ip_hdr, uint8_t* ip_datagram, unsigned int ip_datagram_len){
+static unsigned int adjustIPDatagramLen(struct ip* ip_hdr, unsigned int ip_datagram_len){
+
+	if(ntohs(ip_hdr->ip_len) < ip_datagram_len){
+		//vns u bastard!
+		ip_datagram_len = ntohs(ip_hdr->ip_len);
+	}
+
+	return ip_datagram_len;
+}
+
+/*static void printIPDatagram(struct ip* ip_hdr, uint8_t* ip_datagram, unsigned int ip_datagram_len, char* title){
+
+	if(ntohs(ip_hdr->ip_len) != ip_datagram_len){
+		printf("Inconsistent ip datagram len. vns told me: %d\n", ip_datagram_len);
+	}
+
 	printf("**********************************\n");
+	printf("%s\n", title);
 	printf("IP header:\n");
 	printf("IP version: %d\n",ip_hdr->ip_v);
 	printf("IP header length: %d\n", ip_hdr->ip_hl);

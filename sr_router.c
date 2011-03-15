@@ -60,7 +60,7 @@ void initInterfaces(struct sr_instance* sr){
 	   	iface = iface->next;
 	}
 
-	testSendIcmpMsg(sr);
+	//testSendIcmpMsg(sr);
 }
 
 

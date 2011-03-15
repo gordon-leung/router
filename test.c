@@ -85,13 +85,17 @@ void testSendIcmpMsg(struct sr_instance* sr){
 
 	icmp_msg_hdr->icmp_type = 8;
 	icmp_msg_hdr->icmp_code = 0;
+
+	uint32_t* unused = (uint32_t*)(icmp_msg + 4);
+
+	*unused = 0;
+
 	icmp_msg_hdr->icmp_checksum = 0;
 
-	*((uint32_t*)(icmp_msg + 4)) = 0;
-
-	int checksum = csum((uint16_t*) icmp_msg, icmp_msg_len*4);
+	int checksum = csum((uint16_t*) icmp_msg, icmp_msg_len);
 
 	icmp_msg_hdr->icmp_checksum = checksum;
+
 
 	char* dest_doted_ip = "171.67.245.29";
 	uint32_t dest_ip = 0;
