@@ -85,6 +85,8 @@ void handleEthFrame(struct sr_instance* sr, uint8_t * eth_frame, unsigned int le
 
 			if(isFrameForMe(sr, eth_hdr, iface)){
 
+				sr->num_ip_datagrams_received ++;
+
 				uint8_t* ip_datagram = eth_frame + sizeof(struct sr_ethernet_hdr);
 				unsigned int ip_datagram_len = len - sizeof(struct sr_ethernet_hdr);
 				handleIPDatagram(sr, eth_frame, ip_datagram, ip_datagram_len);
@@ -108,6 +110,24 @@ void handleEthFrame(struct sr_instance* sr, uint8_t * eth_frame, unsigned int le
 	//printf("num of datagram buffers (after): %d\n", sr->num_of_datagram_buffers);
 	//printf("num datagram buffered (after): %d\n\n", sr->num_datagrams_buffed);
 
+	printf("num of ip datagrams received: %ld\n", sr->num_ip_datagrams_received);
+	printf("num of icmp messages created: %ld\n", sr->num_icmp_messages_created);
+	printf("num of ip datagrams sent: %ld\n", sr->num_ip_datagrams_sent);
+	printf("num of ip datagrams buffered: %d\n", sr->num_datagrams_buffed);
+	printf("num of ip datagrams dropped: %ld\n", sr->num_ip_datagrams_dropped);
+	printf("net num of ip datagrams: %ld\n", (
+			sr->num_ip_datagrams_received +
+			sr->num_icmp_messages_created -
+			sr->num_ip_datagrams_sent -
+			sr->num_datagrams_buffed -
+			sr->num_ip_datagrams_dropped
+			));
+	assert((sr->num_ip_datagrams_received +
+			sr->num_icmp_messages_created -
+			sr->num_ip_datagrams_sent -
+			sr->num_datagrams_buffed -
+			sr->num_ip_datagrams_dropped
+			) == 0);
 }
 
 void ethSendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if* iface, unsigned int len){
@@ -144,6 +164,8 @@ void sendEthFrameContainingIPDatagram(struct sr_instance* sr, uint8_t* dest_mac,
 	eth_hdr->ether_type = htons(ETHERTYPE_IP);
 
 	sendEthFrame(sr, dest_mac, eth_frame, iface, payload_len);
+
+	sr->num_ip_datagrams_sent++;
 }
 
 static uint8_t* encapsulate(uint8_t* payload, unsigned int payload_len){

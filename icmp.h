@@ -16,10 +16,6 @@
 #define ICMP_TYPE_TIME_EXCEEDED 11
 #define ICMP_CODE_TTL_EXCEEDED 0
 
-int icmp_reply(struct sr_instance* sr, uint8_t * packet, unsigned int len, char* interface);
-
-uint8_t* create_icmp(struct sr_instance* sr, uint8_t * ip_datagram, int type, int code);
-
 /*For a given ip datagram whose ttl has exceeded, generate an
  * icmp message to be sent back to the sender of the ip datagram
  * @param sr the router instance

@@ -75,6 +75,8 @@ void ipDatagramTimeExceeded(struct sr_instance* sr, uint8_t * ip_datagram, unsig
 	if(icmp_msg){
 		free(icmp_msg);
 	}
+
+	sr->num_icmp_messages_created++;
 }
 
 void destinationUnreachable(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len, unsigned short code){
@@ -122,6 +124,8 @@ void destinationUnreachable(struct sr_instance* sr, uint8_t * ip_datagram, unsig
 	if(icmp_msg){
 		free(icmp_msg);
 	}
+
+	sr->num_icmp_messages_created++;
 }
 
 static void setupIcmpHeader(uint8_t* icmp_msg, unsigned int icmp_msg_len, uint8_t type, uint8_t code){
@@ -201,6 +205,8 @@ void handleIcmpMessageReceived(struct sr_instance* sr, uint8_t * ip_datagram, un
 	icmp_hdr->icmp_checksum = (uint16_t)csum((uint16_t*)icmp_msg, icmp_msg_len);
 
 	sendIcmpMessageWithSrcIP(sr, icmp_msg, icmp_msg_len, dest_ip, src_ip);
+
+	sr->num_icmp_messages_created++;
 }
 
 static int checksumCorrect(struct icmphdr* icmp_hdr, uint16_t* icmp_msg, unsigned int icmp_msg_len){

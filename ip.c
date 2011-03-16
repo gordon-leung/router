@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "ip.h"
 #include "icmp.h"
@@ -111,6 +112,9 @@ void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_da
 	//printIPDatagram(ip_hdr, ip_datagram, ip_datagram_len, "Received IP datagram:");
 
 	if(ipDatagramShouldBeDropped(*ip_hdr)){
+
+		sr->num_ip_datagrams_dropped++;
+
 		//the check sum check didn't pass or the ip
 		//datagram is of the type that can't be handled
 		//by this router, drop it.
@@ -121,15 +125,15 @@ void handleIPDatagram(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_da
 		processIPDatagramDestinedForMe(sr, eth_frame, ip_datagram, ip_datagram_len);
 	}
 	else if(ip_hdr->ip_ttl > 1){
-		//ttl greater than 0, we can try to forward it
-		//even if ttl is now 1 we can still forward it
-		//because the next hop maybe the destination!!
+		//ttl greater than 1, we can try to forward it
 		forward(sr, eth_frame, ip_datagram, ip_datagram_len);
 	}
 	else{
 		//ip datagram is not destined for me and
 		//ttl has expired, so can't be forwarded
 		ipDatagramTimeExceeded(sr, ip_datagram, ip_datagram_len);
+
+		sr->num_ip_datagrams_dropped++;
 	}
 
 }
@@ -142,7 +146,6 @@ static void processIPDatagramDestinedForMe(struct sr_instance* sr, uint8_t* eth_
 		//the ip datagram contains an icmp message
 		//call the icmp component to handle it
 		handleIcmpMessageReceived(sr, ip_datagram, ip_datagram_len);
-
 	}
 	else if( (ip_hdr->ip_p == IPPROTO_UDP) || (ip_hdr->ip_p == IPPROTO_TCP) ){
 		//for ping to work properly we need to use this even
@@ -155,6 +158,10 @@ static void processIPDatagramDestinedForMe(struct sr_instance* sr, uint8_t* eth_
 		destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_PROTOCOL_UNREACHABLE);
 	}
 
+	//for now consider it dropped because we are not counting
+	//ip datagram sent that contains an icmp message generated
+	//by this router
+	sr->num_ip_datagrams_dropped++;
 }
 
 static int ipDatagramDestinedForMe(struct sr_instance* sr, uint32_t dest_host_ip){
@@ -187,6 +194,7 @@ static void forward(struct sr_instance* sr, uint8_t* eth_frame, uint8_t* ip_data
 		//no matching routing table entry returned.
 		//the destination subnet is not reachable.
 		destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_NET_UNREACHABLE);
+		sr->num_ip_datagrams_dropped++;
 	}
 
 }
@@ -230,6 +238,19 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 	switch(resolveStatus){
 		case(ARP_RESOLVE_SUCCESS):
 		{
+
+			//hack, hack, hack. Single threaded router and fast links
+			//are a bad combination for download large files. It seems
+			//the application server can blast data at very high speed
+			//but when packets are lost, most of the time the dup ack
+			//don't arrive to the application server until it's too late
+			//i.e. application server has sent a TCP FIN segment
+			//The solution, slow down the sending of each large packet
+			//by small amount of time.
+			if(ip_datagram_len > IP_DATAGRAM_SIZE_THRESHOLD){
+				usleep(WAIT_TIME);
+			}
+
 			//printIPDatagram((struct ip*)ip_datagram, ip_datagram, ip_datagram_len, "Sending IP datagram:");
 			if(eth_frame){
 				//the ip datagram is already encapsulated in a eth frame
@@ -252,6 +273,9 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 			//this ip datagram, as well as all the ones buffered waiting
 			//to be delivered to the same next hop.
 			destinationUnreachable(sr, ip_datagram, ip_datagram_len, ICMP_CODE_NET_UNREACHABLE);
+
+			sr->num_ip_datagrams_dropped++;
+
 			handleUndeliverableBufferedIPDatagram(sr, next_hop_ip, iface);
 			break;
 		}
@@ -340,8 +364,8 @@ static void setupIPHeaderForICMP(struct ip* ip_hdr, uint16_t ip_datagram_total_l
 
 static void ip_dec_ttl(struct ip* ip_hdr){
 
-	//even if ttl is now 1 we can still forward it
-	//because the next hop maybe the destination!!
+	//sanity check, make sure we don't send
+	//packet with ttl = 0
 	assert(ip_hdr->ip_ttl > 1);
 
 	ip_hdr->ip_ttl--;

@@ -7,6 +7,9 @@
 #define DEFAULT_IP_FRAGMENT 0
 #define DEFAULT_IP_TTL 64
 
+#define WAIT_TIME 10000 //micro-seconds
+#define IP_DATAGRAM_SIZE_THRESHOLD 100 //in bytes
+
 
 /*Handle an ip datagram this router has received
  * @param sr the router instance

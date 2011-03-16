@@ -62,6 +62,10 @@ struct sr_instance
     int num_of_datagram_buffers;	/*the number of ip datagram buffers currently exist*/
     int num_arp_entries;	/*the number of arp table entries currently exist*/
     int num_arp_request_trackers;	/*the number of arp request trackers currently exist*/
+    long num_ip_datagrams_received;
+    long num_ip_datagrams_dropped;
+    long num_ip_datagrams_sent;
+    long num_icmp_messages_created;
 };
 
 /* -- sr_main.c -- */

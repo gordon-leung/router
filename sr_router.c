@@ -46,6 +46,11 @@ void sr_init(struct sr_instance* sr)
 
     sr->num_arp_request_trackers = 0;
 
+    sr->num_ip_datagrams_received = 0;
+    sr->num_ip_datagrams_dropped = 0;
+    sr->num_ip_datagrams_sent = 0;
+    sr->num_icmp_messages_created = 0;
+
 } /* -- sr_init -- */
 
 
