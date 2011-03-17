@@ -4,6 +4,7 @@
 
 #include "icmp.h"
 #include "ip.h"
+#include "sr_protocol.h"
 
 /*Checks to see if the icmp checksum of the icmp received
  * is correct
@@ -46,37 +47,31 @@ static void setupIcmpHeader(uint8_t* icmp_msg, unsigned int icmp_msg_len, uint8_
  */
 static int ipDatagramContainsIcmpMsg(uint8_t* ip_datagram);
 
+/*Checks to see if the ip datagram is encapsulating an icmp
+ * echo request message.
+ * @param ip_datagram the ip datagram
+ * @param ip_datagram_len the size of the ip datagram in
+ * 		bytes
+ * @return 1 if the ip datagram does encapsulate an icmp
+ * 		echo request message, 0 otherwise
+ */
+static int containsNonEchoRequestIcmpMessage(uint8_t* ip_datagram, unsigned int ip_datagram_len);
+
+static void sendIcmpMessage(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len, unsigned short type, unsigned short code);
+
 
 void ipDatagramTimeExceeded(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len){
 
-	if(ipDatagramContainsIcmpMsg(ip_datagram)){
-		//the ip datagram that cause triggers this icmp message
-		//to be generated encapsulates another icmp message
-		//we are not sending an icmp message about another
-		//icmp message.
+	//normally we don't generate an icmp message about
+	//another icmp message but some traceroute implimentation
+	//uses icmp echo request so we need to send an time exceeded
+	//icmp message back to the sender of the ip datagram
+	//containing an icmp echo request message
+	if(containsNonEchoRequestIcmpMessage(ip_datagram, ip_datagram_len)){
 		return;
 	}
 
-	unsigned int icmp_msg_len = calculateIcmpMsgLen(ip_datagram_len);
-	uint8_t* icmp_msg = (uint8_t*) malloc(icmp_msg_len);
-	bzero(icmp_msg, icmp_msg_len);
-
-	copyIPHeaderAndDataToIcmpMsg(icmp_msg, ip_datagram, icmp_msg_len);
-
-	//setup icmp header, includes calculating checksum
-	setupIcmpHeader(icmp_msg, icmp_msg_len, ICMP_TYPE_TIME_EXCEEDED, ICMP_CODE_TTL_EXCEEDED);
-
-	//the source ip of the original ip datagram becomes the destination
-	//ip of this icmp message
-	uint32_t dest_ip = ((struct ip*)ip_datagram)->ip_src.s_addr;
-
-	sendIcmpMessage(sr, icmp_msg, icmp_msg_len, dest_ip);
-
-	if(icmp_msg){
-		free(icmp_msg);
-	}
-
-	sr->num_icmp_messages_created++;
+	sendIcmpMessage(sr, ip_datagram, ip_datagram_len, ICMP_TYPE_TIME_EXCEEDED, ICMP_CODE_TTL_EXCEEDED);
 }
 
 void destinationUnreachable(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len, unsigned short code){
@@ -96,6 +91,11 @@ void destinationUnreachable(struct sr_instance* sr, uint8_t * ip_datagram, unsig
 			|| (code == ICMP_CODE_PROTOCOL_UNREACHABLE)
 			|| (code == ICMP_CODE_PORT_UNREACHABLE));
 
+	sendIcmpMessage(sr, ip_datagram, ip_datagram_len, ICMP_TYPE_DESTINATION_UNREACHABLE, code);
+}
+
+static void sendIcmpMessage(struct sr_instance* sr, uint8_t * ip_datagram, unsigned int ip_datagram_len, unsigned short type, unsigned short code){
+
 	unsigned int icmp_msg_len = calculateIcmpMsgLen(ip_datagram_len);
 	uint8_t* icmp_msg = (uint8_t*) malloc(icmp_msg_len);
 	bzero(icmp_msg, icmp_msg_len);
@@ -103,22 +103,23 @@ void destinationUnreachable(struct sr_instance* sr, uint8_t * ip_datagram, unsig
 	copyIPHeaderAndDataToIcmpMsg(icmp_msg, ip_datagram, icmp_msg_len);
 
 	//setup icmp header, includes calculating checksum
-	setupIcmpHeader(icmp_msg, icmp_msg_len, ICMP_TYPE_DESTINATION_UNREACHABLE, code);
+	setupIcmpHeader(icmp_msg, icmp_msg_len, type, code);
 
 	//the source ip of the original ip datagram becomes the destination
 	//ip of this icmp message
 	uint32_t dest_ip = ((struct ip*)ip_datagram)->ip_src.s_addr;
 
-	if((code == ICMP_CODE_PROTOCOL_UNREACHABLE) || (code == ICMP_CODE_PORT_UNREACHABLE)){
+	if((type == ICMP_TYPE_DESTINATION_UNREACHABLE) &&
+		((code == ICMP_CODE_PROTOCOL_UNREACHABLE) || (code == ICMP_CODE_PORT_UNREACHABLE))){
 		//in this case this router is the destination of the
 		//original ip datagram so the source ip for this icmp message
 		//should be the same as the destination ip of the original
 		//ip datagram
 		uint32_t src_ip = ((struct ip*)ip_datagram)->ip_dst.s_addr;
-		sendIcmpMessageWithSrcIP(sr, icmp_msg, icmp_msg_len, dest_ip, src_ip);
+		ipSendIcmpMessageWithSrcIP(sr, icmp_msg, icmp_msg_len, dest_ip, src_ip);
 	}
 	else{
-		sendIcmpMessage(sr, icmp_msg, icmp_msg_len, dest_ip);
+		ipSendIcmpMessage(sr, icmp_msg, icmp_msg_len, dest_ip);
 	}
 
 	if(icmp_msg){
@@ -126,6 +127,7 @@ void destinationUnreachable(struct sr_instance* sr, uint8_t * ip_datagram, unsig
 	}
 
 	sr->num_icmp_messages_created++;
+
 }
 
 static void setupIcmpHeader(uint8_t* icmp_msg, unsigned int icmp_msg_len, uint8_t type, uint8_t code){
@@ -199,12 +201,9 @@ void handleIcmpMessageReceived(struct sr_instance* sr, uint8_t * ip_datagram, un
 	uint32_t dest_ip = ip_hdr->ip_src.s_addr;
 	uint32_t src_ip = ip_hdr->ip_dst.s_addr;
 
-	//setting up the icmp header for the echo reply
-	icmp_hdr->icmp_type = ICMP_TYPE_ECHO_REPLY;
-	icmp_hdr->icmp_checksum = 0;
-	icmp_hdr->icmp_checksum = (uint16_t)csum((uint16_t*)icmp_msg, icmp_msg_len);
+	setupIcmpHeader(icmp_msg, icmp_msg_len, ICMP_TYPE_ECHO_REPLY, icmp_hdr->icmp_code);
 
-	sendIcmpMessageWithSrcIP(sr, icmp_msg, icmp_msg_len, dest_ip, src_ip);
+	ipSendIcmpMessageWithSrcIP(sr, icmp_msg, icmp_msg_len, dest_ip, src_ip);
 
 	sr->num_icmp_messages_created++;
 }
@@ -219,4 +218,24 @@ static int checksumCorrect(struct icmphdr* icmp_hdr, uint16_t* icmp_msg, unsigne
 	icmp_hdr->icmp_checksum = checksum;
 
 	return checksum == calculated_checksum;
+}
+
+static int containsNonEchoRequestIcmpMessage(uint8_t* ip_datagram, unsigned int ip_datagram_len){
+
+	if(ipDatagramContainsIcmpMsg(ip_datagram)){
+		return FALSE;
+	}
+
+	uint8_t* icmp_msg = ip_datagram + sizeof(struct ip);
+	struct icmphdr* icmp_hdr = (struct icmphdr*)icmp_msg;
+	unsigned int icmp_msg_len = ip_datagram_len - sizeof(struct ip);
+
+	if(!checksumCorrect(icmp_hdr, (uint16_t*)icmp_msg, icmp_msg_len)){
+		//check sum is not correct, we don't konw what type
+		//of icmp message it is, so we assume it is not a
+		//ping request
+		return FALSE;
+	}
+
+	return (icmp_hdr->icmp_type != ICMP_TYPE_ECHO_REQUEST);
 }

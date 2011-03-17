@@ -105,7 +105,7 @@ void testSendIcmpMsg(struct sr_instance* sr){
 	uint32_t src_ip = 0;
 	inet_pton(AF_INET, src_doted_ip, &src_ip);
 
-	sendIcmpMessageWithSrcIP(sr, icmp_msg, icmp_msg_len, dest_ip, src_ip);
+	ipSendIcmpMessageWithSrcIP(sr, icmp_msg, icmp_msg_len, dest_ip, src_ip);
 
 	if(icmp_msg){
 		free(icmp_msg);

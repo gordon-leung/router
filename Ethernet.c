@@ -110,6 +110,8 @@ void handleEthFrame(struct sr_instance* sr, uint8_t * eth_frame, unsigned int le
 	//printf("num of datagram buffers (after): %d\n", sr->num_of_datagram_buffers);
 	//printf("num datagram buffered (after): %d\n\n", sr->num_datagrams_buffed);
 
+	/*
+	//For debugging purposes
 	printf("num of ip datagrams received: %ld\n", sr->num_ip_datagrams_received);
 	printf("num of icmp messages created: %ld\n", sr->num_icmp_messages_created);
 	printf("num of ip datagrams sent: %ld\n", sr->num_ip_datagrams_sent);
@@ -128,6 +130,7 @@ void handleEthFrame(struct sr_instance* sr, uint8_t * eth_frame, unsigned int le
 			sr->num_datagrams_buffed -
 			sr->num_ip_datagrams_dropped
 			) == 0);
+	*/
 }
 
 void ethSendArpRequest(struct sr_instance* sr, uint8_t * arp_request, struct sr_if* iface, unsigned int len){

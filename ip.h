@@ -41,7 +41,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
  * @param dest_ip the ip addr of the host that the icmp
  *		message to to be sent to
  */
-void sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip);
+void ipSendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip);
 
 /*send an icmp message by first encapsulating it in a ip
  * datagram and pass the ip datagram to the eth layer to
@@ -54,4 +54,4 @@ void sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int
  * @param src_ip the source ip addr, which should be one
  * 		of the ip addr assigned to this host
  */
-void sendIcmpMessageWithSrcIP(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip, uint32_t src_ip);
+void ipSendIcmpMessageWithSrcIP(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip, uint32_t src_ip);

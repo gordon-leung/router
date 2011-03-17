@@ -248,7 +248,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 			//The solution, slow down the sending of each large packet
 			//by small amount of time.
 			if(ip_datagram_len > IP_DATAGRAM_SIZE_THRESHOLD){
-				usleep(WAIT_TIME);
+				//usleep(WAIT_TIME);
 			}
 
 			//printIPDatagram((struct ip*)ip_datagram, ip_datagram, ip_datagram_len, "Sending IP datagram:");
@@ -286,7 +286,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 }
 
 
-void sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip){
+void ipSendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip){
 
 	assert(icmp_msg_len >= ICMP_HDR_LEN);
 	assert(icmp_message);
@@ -301,11 +301,11 @@ void sendIcmpMessage(struct sr_instance* sr, uint8_t* icmp_message, unsigned int
 	//ip datagram which caused this icmp message to be sent
 	struct sr_if* iface = sr->if_list;
 	assert(iface);
-	sendIcmpMessageWithSrcIP(sr, icmp_message, icmp_msg_len, dest_ip, iface->ip);
+	ipSendIcmpMessageWithSrcIP(sr, icmp_message, icmp_msg_len, dest_ip, iface->ip);
 
 }
 
-void sendIcmpMessageWithSrcIP(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip, uint32_t src_ip){
+void ipSendIcmpMessageWithSrcIP(struct sr_instance* sr, uint8_t* icmp_message, unsigned int icmp_msg_len, uint32_t dest_ip, uint32_t src_ip){
 
 	assert(icmp_msg_len >= ICMP_HDR_LEN);
 	assert(icmp_message);
