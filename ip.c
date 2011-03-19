@@ -264,7 +264,7 @@ void sendIPDatagram(struct sr_instance* sr, uint32_t next_hop_ip, char* interfac
 		case(ARP_REQUEST_SENT):
 		{
 			bufferIPDatagram(sr, next_hop_ip, ip_datagram, interface, ip_datagram_len);
-			printf("ip packet buffered\n");
+			//printf("ip packet buffered\n");
 			break;
 		}
 		case(ARP_RESOLVE_FAIL):

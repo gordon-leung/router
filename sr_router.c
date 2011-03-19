@@ -94,7 +94,7 @@ void sr_handlepacket(struct sr_instance* sr,
     assert(sr);
     assert(packet);
     assert(interface);
-    printf("*** -> Received packet of length %d\n",len);
+    //printf("*** -> Received packet of length %d\n",len);
     handleEthFrame(sr, packet, len, interface);
 
 		//testmethod(sr, packet, len, interface); //for debug, learning purposes

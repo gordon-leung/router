@@ -74,14 +74,14 @@ void handleEthFrame(struct sr_instance* sr, uint8_t * eth_frame, unsigned int le
 		{
 			//if it is a eth arp packet we send it to arp component to see if any useful info
 			//can be extracted regarded if the eth frame is meant for us.
-			printf("Got ARP PACKET!\n");
+			//printf("Got ARP PACKET!\n");
 			handleArpPacket(sr, eth_frame, iface);
 			break;
 		}
 
 		case (ETHERTYPE_IP): //IP PACKET!
 		{
-			printf("Got IP packet!\n");
+			//printf("Got IP packet!\n");
 
 			if(isFrameForMe(sr, eth_hdr, iface)){
 
